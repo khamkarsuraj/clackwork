@@ -20,13 +20,17 @@ final class AppState: ObservableObject {
     @Published var isEnabled: Bool {
         didSet {
             defaults.set(isEnabled, forKey: Key.enabled)
+            gate.update(isEnabled: isEnabled)
             updateListener()
         }
     }
 
     /// The active keyboard profile (FR-8).
     @Published var selectedProfile: KeyboardProfile {
-        didSet { defaults.set(selectedProfile.id, forKey: Key.profile) }
+        didSet {
+            defaults.set(selectedProfile.id, forKey: Key.profile)
+            gate.update(profileID: selectedProfile.id)
+        }
     }
 
     /// Master volume, 0...1, independent of system volume (FR-10).
@@ -64,7 +68,9 @@ final class AppState: ObservableObject {
 
     // MARK: Mute (FR-13): the app keeps running but stays silent. Not persisted across launches.
 
-    @Published private(set) var isMuted = false
+    @Published private(set) var isMuted = false {
+        didSet { gate.update(isMuted: isMuted) }
+    }
 
     /// When a timed mute ends, or nil for "until I unmute".
     @Published private(set) var muteEndsAt: Date?
@@ -81,6 +87,8 @@ final class AppState: ObservableObject {
 
     let engine: SoundEngine?
     private var listener: KeyListener!
+    /// What the listener thread reads to decide whether a key plays; mirrors the state above.
+    private let gate = PlaybackGate()
     private var permissionPoll: Timer?
     private var activationObserver: NSObjectProtocol?
     private let defaults: UserDefaults
@@ -104,11 +112,22 @@ final class AppState: ObservableObject {
         engine?.volume = Float(volume)
         applyDockIcon()
 
-        listener = KeyListener { [weak self] event in
-            guard let self else { return }
-            if event.isDown { play(event.type) }
-            keyEvents.send(event)
-        }
+        gate.update(isEnabled: isEnabled, isMuted: isMuted, profileID: selectedProfile.id)
+
+        // Sound is played on the listener thread; only the UI update hops to the main thread.
+        let gate = gate
+        let probe = LatencyProbe.isEnabled ? LatencyProbe() : nil
+        listener = KeyListener(
+            onKeyDown: { [engine] event in
+                guard let engine, let profileID = gate.profileToPlay else { return }
+                engine.play(event.type, profileID: profileID)
+                probe?.record(eventNanos: event.eventNanos, tapNanos: event.tapNanos,
+                              scheduledNanos: LatencyProbe.now(), audioPathMs: engine.audioPathLatencyMs)
+            },
+            onEvent: { [weak self] event in
+                self?.keyEvents.send(event)
+            }
+        )
         updateListener()
 
         // Permission can be granted or revoked in System Settings while the app runs;

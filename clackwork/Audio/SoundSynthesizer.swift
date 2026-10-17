@@ -6,7 +6,7 @@ import Foundation
 /// a band-passed noise "click", a low sine "body" (the thock), and an optional
 /// ringing "ping" (buckling spring). Each profile has its own recipe, each key
 /// type bends it, and each variation adds a small pitch and level offset.
-enum SoundSynthesizer {
+nonisolated enum SoundSynthesizer {
     struct Recipe {
         var clickLevel: Float
         var clickFrequency: Float

@@ -10,7 +10,10 @@ import Foundation
 /// Secure input fields (passwords) are skipped (FR-6), as are auto-repeat events from held
 /// keys (FR-5). Needs Input Monitoring permission.
 nonisolated final class KeyListener: @unchecked Sendable {
-    /// Called on the main thread for every key down and key up.
+    /// Called on the listener thread for every key down, before anything else.
+    /// Keep it fast: this is where the sound is played.
+    private let onKeyDown: @Sendable (KeyEvent) -> Void
+    /// Called on the main thread for every key down and key up, for the UI.
     private let onEvent: @MainActor (KeyEvent) -> Void
 
     private let lock = NSLock()
@@ -18,7 +21,9 @@ nonisolated final class KeyListener: @unchecked Sendable {
     private var runLoop: CFRunLoop?
     private var thread: Thread?
 
-    init(onEvent: @escaping @MainActor (KeyEvent) -> Void) {
+    init(onKeyDown: @escaping @Sendable (KeyEvent) -> Void,
+         onEvent: @escaping @MainActor (KeyEvent) -> Void) {
+        self.onKeyDown = onKeyDown
         self.onEvent = onEvent
     }
 
@@ -113,12 +118,16 @@ nonisolated final class KeyListener: @unchecked Sendable {
         }
         guard !IsSecureEventInputEnabled() else { return }
 
+        let tapNanos = LatencyProbe.now()
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
         let keyEvent = KeyEvent(
             type: Self.keyType(for: keyCode),
             isDown: isDown,
-            location: KeyboardLayout.location(for: Int(keyCode))
+            location: KeyboardLayout.location(for: Int(keyCode)),
+            eventNanos: LatencyProbe.eventNanos(fromTimestamp: event.timestamp, now: tapNanos),
+            tapNanos: tapNanos
         )
+        if isDown { onKeyDown(keyEvent) }
         DispatchQueue.main.async { [onEvent] in
             MainActor.assumeIsolated { onEvent(keyEvent) }
         }
