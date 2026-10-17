@@ -5,7 +5,8 @@ import os
 
 /// Low-latency playback of keyboard sounds (FR-2, FR-3, FR-4).
 ///
-/// All samples are rendered once at launch and kept in memory. A pool of player
+/// Every profile plays a recorded pack from the Sounds folder (see `SoundPack`). All
+/// samples are prepared once at launch and kept in memory. A pool of player
 /// nodes lets fast typing overlap sounds without cutting any off. Each press
 /// picks a random variation, a random pre-rendered pitch step within ±3%, and a
 /// random level within -3%.
@@ -16,8 +17,6 @@ import os
 /// `play` is safe to call from any thread. The key listener calls it on its own thread so
 /// a busy main thread can't delay a key; the UI calls it from the main thread.
 nonisolated final class SoundEngine: @unchecked Sendable {
-    static let variationsPerSound = 3
-
     /// Pitch steps rendered for every sample (FR-3: within ±3%).
     static let pitchSteps: [Double] = [0.97, 0.985, 1.0, 1.015, 1.03]
 
@@ -159,14 +158,25 @@ nonisolated final class SoundEngine: @unchecked Sendable {
         updateAudioPathLatency()
     }
 
+    /// Most distinct recorded slices kept per key type; each gets every pitch step.
+    static let maxRecordedVariations = 8
+
+    /// Profiles whose pack loaded. A profile missing from here makes no sound.
+    private(set) var loadedProfileIDs: Set<String> = []
+
     private func preloadAllSounds() {
         for profile in KeyboardProfile.all {
+            guard let recorded = SoundPack.load(profileID: profile.id, sampleRate: format.sampleRate,
+                                                maxVariations: Self.maxRecordedVariations) else {
+                NSLog("SoundEngine: no sound pack for \(profile.id); it will be silent")
+                continue
+            }
+            loadedProfileIDs.insert(profile.id)
+
             for key in KeyType.allCases {
+                let sources = recorded[key] ?? []
                 var variations: [AVAudioPCMBuffer] = []
-                for variation in 0..<Self.variationsPerSound {
-                    let samples = SoundSynthesizer.render(
-                        profileID: profile.id, key: key, variation: variation, sampleRate: format.sampleRate
-                    )
+                for samples in sources {
                     for step in Self.pitchSteps {
                         if let buffer = makeBuffer(Self.resample(samples, pitch: step)) {
                             variations.append(buffer)
@@ -176,6 +186,11 @@ nonisolated final class SoundEngine: @unchecked Sendable {
                 buffers[Key(profileID: profile.id, key: key)] = variations
             }
         }
+    }
+
+    /// Distinct sounds (before pitch steps) loaded for a profile and key type.
+    func variationCount(profileID: String, key: KeyType) -> Int {
+        (buffers[Key(profileID: profileID, key: key)]?.count ?? 0) / Self.pitchSteps.count
     }
 
     /// Shifts pitch by playing the samples faster (pitch > 1) or slower, with linear
@@ -203,7 +218,7 @@ nonisolated final class SoundEngine: @unchecked Sendable {
     }
 
     #if DEBUG
-    /// Writes every preloaded sound at its natural pitch as a WAV file, for auditioning.
+    /// Writes every loaded sound at its natural pitch as a WAV file, for auditioning.
     func exportSounds(to directory: URL) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let middle = Self.pitchSteps.firstIndex(of: 1.0) ?? 0

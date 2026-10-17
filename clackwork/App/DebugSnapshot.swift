@@ -7,13 +7,14 @@ import SwiftUI
 ///
 /// `--snapshot /path/out.png [--dark]` renders the main window's layer tree to a PNG and quits.
 /// `--render-canvas /path/out.png [--dark]` renders `KeyboardsView` alone via ImageRenderer and quits.
-/// `--export-sounds /path/dir` writes every placeholder sound as a WAV file and quits.
+/// `--export-sounds /path/dir` writes every loaded sound as a WAV file and quits.
 /// `--section settings` opens the window on that sidebar section (with any of the above).
 /// `--dump-views 1` prints the window's AppKit view tree with frames and quits.
 /// `--stress-sounds 300` plays that many random keys 12 ms apart from two threads, then quits.
 /// `--test-shortcuts 1` runs every shortcut action through the hot key router and prints the state.
 /// `--test-keymap 1` prints how sample key codes are classified and whether Input Monitoring is granted.
 /// `--latency-report 1` prints the audio device's buffer and output latency, then quits.
+/// `--test-soundpacks 1` prints whether each profile's pack loaded and how many sounds it has.
 /// All work without screen-recording permission. Every flag takes a value because AppKit
 /// pairs `-key value` arguments; a stray word would be opened as a document and no window shows.
 enum DebugSnapshot {
@@ -122,6 +123,17 @@ enum DebugSnapshot {
                          deviceRate, engine.ioBufferFrames,
                          deviceRate > 0 ? Double(engine.ioBufferFrames) / deviceRate * 1000 : 0,
                          engine.outputLatency * 1000, engine.audioPathLatencyMs))
+            return
+        }
+
+        if args.contains("--test-soundpacks") {
+            defer { NSApp.terminate(nil) }
+            let engine = SoundEngine()
+            for profile in KeyboardProfile.all {
+                let source = engine.loadedProfileIDs.contains(profile.id) ? "loaded" : "MISSING"
+                let counts = KeyType.allCases.map { "\($0.rawValue) \(engine.variationCount(profileID: profile.id, key: $0))" }
+                print("soundpack: \(profile.id) \(source): \(counts.joined(separator: ", "))")
+            }
             return
         }
 

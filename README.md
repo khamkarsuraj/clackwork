@@ -9,13 +9,13 @@ Early v1.0 development.
 | Area                                                                      | State                                      |
 | ------------------------------------------------------------------------- | ------------------------------------------ |
 | Main window: profiles, preview, volume, Try it field, light and dark mode | Done                                       |
-| Sound engine with 5 profiles                                              | Done, using synthesized placeholder sounds |
+| Sound engine with 4 profiles: Cherry MX Blue, Brown, Black and Red        | Done, using development recordings; in-house recordings pending (#49) |
 | System-wide key listener                                                  | Done                                       |
 | Global shortcuts, customizable in Settings                                | Done                                       |
 | Settings: launch at login, Dock icon, Input Monitoring status             | Done                                       |
 | Menu bar popover and icon states                                          | Not started                                |
 | Onboarding, HUD overlay                                                   | Not started                                |
-| Recorded sound samples                                                    | Not started                                |
+| In-house or confirmed-license recordings                                  | Not started                                |
 | Stereo positioning, auto-mute during calls, per-app exclusions            | Settings stored, behavior not built        |
 
 ## Build and run
@@ -61,6 +61,7 @@ Key press to sound latency must stay under 20 ms (PRD NFR, issue #32). It has fo
 
 ```
 clackwork.app/Contents/MacOS/clackwork --latency-report 1
+clackwork.app/Contents/MacOS/clackwork --test-soundpacks 1
 ```
 
 To compare IO buffer sizes, add `-ioBufferFrames 128` or any other size.
@@ -73,13 +74,26 @@ Bluetooth headphones add 100 ms or more of their own latency, which the app can'
 clackwork/
 ├── App/          App entry, object container, debug tooling
 ├── Diagnostics/  Latency probe
-├── Audio/        Sound engine and placeholder sound synthesizer
+├── Audio/        Sound engine and recorded pack loader
 ├── Listener/     System-wide key event tap
 ├── Models/       Profiles, key types, keyboard layout, shortcuts
 ├── Shortcuts/    Global hot key registration
+├── Sounds/       Recorded sound packs bundled with the app, and their license notices
 ├── State/        App state and shortcut store
 └── Views/        Main window, Keyboards, Settings, Shortcuts
 ```
+
+## Sound packs
+
+Recorded packs live in `clackwork/Sounds/` as `<profile-id>.caf` and `<profile-id>.json`, one per profile: `mx-blue`, `mx-brown`, `mx-black` and `mx-red`. A profile without a pack is silent.
+
+Sound packs are not committed; each developer keeps them locally. A pack is a folder with one audio file and a `config.json` that maps key scan codes to `[start ms, duration ms]` slices of it. To add one, run:
+
+```
+scripts/import_soundpack.sh <pack-folder> <profile-id>
+```
+
+Keep each pack's license notice in `clackwork/Sounds/ThirdPartyNotices.txt` so it ships with the sounds.
 
 ## Debug tools
 
