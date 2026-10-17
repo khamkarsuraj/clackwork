@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// One of the five keyboard sound profiles shipped in v1.0.
+/// One of the keyboard sound profiles: Cherry MX Blue, Brown, Black and Red styles.
 nonisolated struct KeyboardProfile: Identifiable, Hashable, Sendable {
     let id: String
     let name: String
@@ -42,31 +42,22 @@ nonisolated struct KeyboardProfile: Identifiable, Hashable, Sendable {
             dark: Palette(body: Color(hex: 0x3B3B3D), cap: Color(hex: 0xD6D0C5), modifier: Color(hex: 0x9A9284), accent: Color(hex: 0xA9765A))
         ),
         KeyboardProfile(
-            id: "lubed-linear",
-            name: "Lubed linear (Gateron Yellow style)",
-            shortName: "Lubed linear",
+            id: "mx-black",
+            name: "Cherry MX Black style",
+            shortName: "MX Black style",
             family: "Linear",
-            description: "Deep, smooth “thock” with no bump or click.",
-            light: Palette(body: Color(hex: 0xE8DCBC), cap: Color(hex: 0xFBF7EC), modifier: Color(hex: 0xE6D9B5), accent: Color(hex: 0xD9A520)),
-            dark: Palette(body: Color(hex: 0x5A5240), cap: Color(hex: 0xE3DCC8), modifier: Color(hex: 0xA69B7E), accent: Color(hex: 0xE2B23A))
+            description: "Heavy, smooth press with a deep, solid sound and no bump or click.",
+            light: Palette(body: Color(hex: 0x1C1C1E), cap: Color(hex: 0x4A4A4E), modifier: Color(hex: 0x2E2E31), accent: Color(hex: 0x8E8E93)),
+            dark: Palette(body: Color(hex: 0x111113), cap: Color(hex: 0x5A5A5F), modifier: Color(hex: 0x3E3E42), accent: Color(hex: 0x9A9AA0))
         ),
         KeyboardProfile(
-            id: "model-m",
-            name: "IBM Model M",
-            shortName: "IBM Model M",
-            family: "Buckling spring",
-            description: "Loud, vintage, metallic ping from a buckling spring.",
-            light: Palette(body: Color(hex: 0xD3CCBD), cap: Color(hex: 0xE4DED0), modifier: Color(hex: 0x9C9C9C), accent: Color(hex: 0x9C9C9C)),
-            dark: Palette(body: Color(hex: 0x57534A), cap: Color(hex: 0xCFC8B8), modifier: Color(hex: 0x8C8C8C), accent: Color(hex: 0x9C9C9C))
-        ),
-        KeyboardProfile(
-            id: "topre",
-            name: "Topre (HHKB style)",
-            shortName: "Topre (HHKB style)",
-            family: "Electro-capacitive",
-            description: "Rounded, cushioned “thock” with a light, even feel.",
-            light: Palette(body: Color(hex: 0x4A4D52), cap: Color(hex: 0xE3E3E0), modifier: Color(hex: 0x5F6368), accent: Color(hex: 0x5F6368)),
-            dark: Palette(body: Color(hex: 0x4A4D52), cap: Color(hex: 0xD4D4D1), modifier: Color(hex: 0x6B7076), accent: Color(hex: 0x6B7076))
+            id: "mx-red",
+            name: "Cherry MX Red style",
+            shortName: "MX Red style",
+            family: "Linear",
+            description: "Light, smooth press with a soft, quiet sound. Fast and easy on the fingers.",
+            light: Palette(body: Color(hex: 0xE5E5EA), cap: Color(hex: 0xFFFFFF), modifier: Color(hex: 0xD1D1D6), accent: Color(hex: 0xD9363E)),
+            dark: Palette(body: Color(hex: 0x3A3A3D), cap: Color(hex: 0xD8D8DC), modifier: Color(hex: 0x9A9AA0), accent: Color(hex: 0xE5484D))
         ),
     ]
 
