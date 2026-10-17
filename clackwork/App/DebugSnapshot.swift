@@ -10,9 +10,10 @@ import SwiftUI
 /// `--export-sounds /path/dir` writes every placeholder sound as a WAV file and quits.
 /// `--section settings` opens the window on that sidebar section (with any of the above).
 /// `--dump-views 1` prints the window's AppKit view tree with frames and quits.
-/// `--stress-sounds 300` plays that many random keys 12 ms apart, then quits.
+/// `--stress-sounds 300` plays that many random keys 12 ms apart from two threads, then quits.
 /// `--test-shortcuts 1` runs every shortcut action through the hot key router and prints the state.
 /// `--test-keymap 1` prints how sample key codes are classified and whether Input Monitoring is granted.
+/// `--latency-report 1` prints the audio device's buffer and output latency, then quits.
 /// All work without screen-recording permission. Every flag takes a value because AppKit
 /// pairs `-key value` arguments; a stray word would be opened as a document and no window shows.
 enum DebugSnapshot {
@@ -59,9 +60,15 @@ enum DebugSnapshot {
             let engine = SoundEngine()
             print("stress: render rate \(engine.sampleRate) Hz")
             var played = 0
+            // Half the keys play from a background thread, like the key listener does,
+            // so the engine's locking is exercised from two threads at once.
+            let listenerLike = DispatchQueue(label: "stress.listener", qos: .userInteractive)
             Timer.scheduledTimer(withTimeInterval: 0.012, repeats: true) { timer in
                 MainActor.assumeIsolated {
                     engine.play(KeyType.allCases.randomElement()!, profile: KeyboardProfile.all.randomElement()!)
+                    listenerLike.async {
+                        engine.play(KeyType.allCases.randomElement()!, profileID: KeyboardProfile.all.randomElement()!.id)
+                    }
                     played += 1
                     if played >= count {
                         timer.invalidate()
@@ -104,6 +111,17 @@ enum DebugSnapshot {
             print("reloaded: toggleMute=\(reloaded.combo(for: .toggleMute)?.display ?? "nil")")
             store.restoreDefaults()
             print("restored: toggleMute=\(store.combo(for: .toggleMute)?.display ?? "nil")")
+            return
+        }
+
+        if args.contains("--latency-report") {
+            defer { NSApp.terminate(nil) }
+            let engine = SoundEngine()
+            let deviceRate = engine.outputDeviceSampleRate
+            print(String(format: "latency: device %.0f Hz, IO buffer %u frames (%.2f ms), output latency %.2f ms, audio path worst case %.2f ms",
+                         deviceRate, engine.ioBufferFrames,
+                         deviceRate > 0 ? Double(engine.ioBufferFrames) / deviceRate * 1000 : 0,
+                         engine.outputLatency * 1000, engine.audioPathLatencyMs))
             return
         }
 

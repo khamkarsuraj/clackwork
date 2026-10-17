@@ -44,11 +44,35 @@ The key listener is listen-only. It passes on only the key category, such as sta
 | Next or previous keyboard | ⌃⌥→ / ⌃⌥← |
 | Volume up or down         | ⌃⌥↑ / ⌃⌥↓ |
 
+## Measuring latency
+
+Key press to sound latency must stay under 20 ms (PRD NFR, issue #32). It has four parts:
+
+| Part | What it covers | How it's measured |
+| --- | --- | --- |
+| Delivery | Hardware key event to the event tap | Live, with the latency probe |
+| Hand-off | Event tap to the sound being scheduled | Live, with the latency probe |
+| Render wait | Scheduled to the next audio cycle, at most one IO buffer | From the device's buffer size |
+| Output | Audio cycle to the speaker | From the device's reported latency |
+
+**Live measurement.** In Xcode, open Product > Scheme > Edit Scheme > Run > Arguments and add `-measureLatency YES`. Run the app, grant Input Monitoring, and type at least 100 keys in any app. Every 100 key presses the Xcode console prints p50, p95 and max for each part and for the total. The probe records timestamps only, never which key was pressed.
+
+**Audio path only.** No key presses needed:
+
+```
+clackwork.app/Contents/MacOS/clackwork --latency-report 1
+```
+
+To compare IO buffer sizes, add `-ioBufferFrames 128` or any other size.
+
+Bluetooth headphones add 100 ms or more of their own latency, which the app can't reduce. Measure with built-in speakers or wired output.
+
 ## Project layout
 
 ```
 clackwork/
 ├── App/          App entry, object container, debug tooling
+├── Diagnostics/  Latency probe
 ├── Audio/        Sound engine and placeholder sound synthesizer
 ├── Listener/     System-wide key event tap
 ├── Models/       Profiles, key types, keyboard layout, shortcuts
@@ -67,4 +91,5 @@ clackwork.app/Contents/MacOS/clackwork --export-sounds <dir>
 clackwork.app/Contents/MacOS/clackwork --stress-sounds 300
 clackwork.app/Contents/MacOS/clackwork --test-shortcuts 1
 clackwork.app/Contents/MacOS/clackwork --test-keymap 1
+clackwork.app/Contents/MacOS/clackwork --latency-report 1
 ```

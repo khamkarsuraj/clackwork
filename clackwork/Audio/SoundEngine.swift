@@ -1,19 +1,37 @@
+import AudioToolbox
 import AVFoundation
 import Foundation
+import os
 
 /// Low-latency playback of keyboard sounds (FR-2, FR-3, FR-4).
 ///
 /// All samples are rendered once at launch and kept in memory. A pool of player
 /// nodes lets fast typing overlap sounds without cutting any off. Each press
-/// picks a random variation and nudges pitch and level by up to ±3%.
-final class SoundEngine {
+/// picks a random variation, a random pre-rendered pitch step within ±3%, and a
+/// random level within -3%.
+///
+/// Pitch is pre-rendered rather than shifted live: a live pitch unit per voice kept
+/// processing silence and roughly doubled idle CPU (see issue #32).
+///
+/// `play` is safe to call from any thread. The key listener calls it on its own thread so
+/// a busy main thread can't delay a key; the UI calls it from the main thread.
+nonisolated final class SoundEngine: @unchecked Sendable {
     static let variationsPerSound = 3
+
+    /// Pitch steps rendered for every sample (FR-3: within ±3%).
+    static let pitchSteps: [Double] = [0.97, 0.985, 1.0, 1.015, 1.03]
+
+    /// Target duration of one IO cycle. Keeps the render wait short on every device
+    /// (256 frames at 48 kHz, 512 at 96 kHz) without paying for tiny buffers.
+    static let targetIOCycle: TimeInterval = 256.0 / 48_000
 
     private let engine = AVAudioEngine()
     private let format: AVAudioFormat
-    private var voices: [(player: AVAudioPlayerNode, pitch: AVAudioUnitVarispeed)] = []
-    private var nextVoice = 0
+    private var voices: [AVAudioPlayerNode] = []
+    /// Written only during init; read-only afterwards, so safe to read from any thread.
     private var buffers: [Key: [AVAudioPCMBuffer]] = [:]
+    /// Guards voice rotation and scheduling, which can happen on two threads at once.
+    private let voiceLock = OSAllocatedUnfairLock(initialState: 0)
     private var observer: NSObjectProtocol?
 
     private struct Key: Hashable {
@@ -24,12 +42,57 @@ final class SoundEngine {
     /// The rate all samples are rendered at.
     var sampleRate: Double { format.sampleRate }
 
+    /// IO buffer size forced with the launch argument `-ioBufferFrames N`, for comparing sizes.
+    /// 0 means size the buffer from `targetIOCycle`.
+    private let bufferFramesOverride: UInt32
+
+    /// Frames per IO cycle actually in use on the output device.
+    var ioBufferFrames: UInt32 {
+        guard let unit = engine.outputNode.audioUnit else { return 0 }
+        var frames: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        AudioUnitGetProperty(unit, kAudioDevicePropertyBufferFrameSize, kAudioUnitScope_Global, 0, &frames, &size)
+        return frames
+    }
+
+    /// The output device's own sample rate.
+    var outputDeviceSampleRate: Double { engine.outputNode.outputFormat(forBus: 0).sampleRate }
+
+    /// Output device latency (hardware + safety offset), in seconds.
+    var outputLatency: TimeInterval { engine.outputNode.presentationLatency }
+
+    /// Worst case from scheduling a sound to it reaching the speaker: one full IO cycle of
+    /// waiting plus the output latency. Cached, because it changes only with the device.
+    var audioPathLatencyMs: Double { audioPathLatency.withLock { $0 } }
+    private let audioPathLatency = OSAllocatedUnfairLock(initialState: 0.0)
+
+    private func updateAudioPathLatency() {
+        let deviceRate = outputDeviceSampleRate
+        let cycle = deviceRate > 0 ? Double(ioBufferFrames) / deviceRate : 0
+        let ms = (cycle + outputLatency) * 1000
+        audioPathLatency.withLock { $0 = ms }
+    }
+
+    private func applyPreferredBufferSize() {
+        guard let unit = engine.outputNode.audioUnit else { return }
+        let deviceRate = outputDeviceSampleRate
+        guard bufferFramesOverride > 0 || deviceRate > 0 else { return }
+        var frames = bufferFramesOverride > 0
+            ? bufferFramesOverride
+            : UInt32((deviceRate * Self.targetIOCycle).rounded())
+        let status = AudioUnitSetProperty(unit, kAudioDevicePropertyBufferFrameSize, kAudioUnitScope_Global, 0,
+                                          &frames, UInt32(MemoryLayout<UInt32>.size))
+        if status != noErr { NSLog("SoundEngine: could not set IO buffer to \(frames) frames (status \(status))") }
+    }
+
     /// Master volume 0...1, independent of the system volume (FR-10).
     var volume: Float = 0.7 {
         didSet { engine.mainMixerNode.outputVolume = volume }
     }
 
     init(voiceCount: Int = 12) {
+        let override = UserDefaults.standard.integer(forKey: "ioBufferFrames")
+        bufferFramesOverride = override > 0 ? UInt32(override) : 0
         // Render at a fixed rate so quality doesn't depend on whichever output device is
         // active at launch (a headset in call mode can report 24 kHz). Every voice feeds
         // the mixer at this same rate, so the only sample-rate conversion happens once,
@@ -39,12 +102,9 @@ final class SoundEngine {
                        format: AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 2))
         for _ in 0..<voiceCount {
             let player = AVAudioPlayerNode()
-            let pitch = AVAudioUnitVarispeed()
             engine.attach(player)
-            engine.attach(pitch)
-            engine.connect(player, to: pitch, format: format)
-            engine.connect(pitch, to: engine.mainMixerNode, format: format)
-            voices.append((player, pitch))
+            engine.connect(player, to: engine.mainMixerNode, format: format)
+            voices.append(player)
         }
         engine.mainMixerNode.outputVolume = volume
         preloadAllSounds()
@@ -54,8 +114,7 @@ final class SoundEngine {
         observer = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
         ) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in self.start() }
+            self?.start()
         }
     }
 
@@ -65,30 +124,39 @@ final class SoundEngine {
 
     /// Plays the sound for a key type in the given profile.
     func play(_ key: KeyType, profile: KeyboardProfile) {
-        guard let options = buffers[Key(profileID: profile.id, key: key)], !options.isEmpty else { return }
-        if !engine.isRunning { start() }
-        guard engine.isRunning else { return }
+        play(key, profileID: profile.id)
+    }
 
+    /// Plays the sound for a key type. Safe to call from any thread.
+    func play(_ key: KeyType, profileID: String) {
+        guard let options = buffers[Key(profileID: profileID, key: key)], !options.isEmpty else { return }
+        guard engine.isRunning else {
+            // Restarting the engine belongs on the main thread; this key is skipped.
+            DispatchQueue.main.async { [weak self] in self?.start() }
+            return
+        }
         let buffer = options.randomElement()!
-        let voice = voices[nextVoice]
-        nextVoice = (nextVoice + 1) % voices.count
-
-        voice.pitch.rate = Float.random(in: 0.97...1.03)
-        voice.player.volume = Float.random(in: 0.97...1.0)
-        // `.interrupts` replaces whatever the voice was playing; no stop() needed,
-        // which keeps the render thread from doing a reset mid-cycle.
-        voice.player.scheduleBuffer(buffer, at: nil, options: .interrupts)
-        if !voice.player.isPlaying { voice.player.play() }
+        voiceLock.withLock { next in
+            let voice = voices[next]
+            next = (next + 1) % voices.count
+            voice.volume = Float.random(in: 0.97...1.0)
+            // `.interrupts` replaces whatever the voice was playing; no stop() needed,
+            // which keeps the render thread from doing a reset mid-cycle.
+            voice.scheduleBuffer(buffer, at: nil, options: .interrupts)
+            if !voice.isPlaying { voice.play() }
+        }
     }
 
     private func start() {
         guard !engine.isRunning else { return }
+        applyPreferredBufferSize()
         engine.prepare()
         do {
             try engine.start()
         } catch {
             NSLog("SoundEngine: could not start audio engine: \(error)")
         }
+        updateAudioPathLatency()
     }
 
     private func preloadAllSounds() {
@@ -99,11 +167,31 @@ final class SoundEngine {
                     let samples = SoundSynthesizer.render(
                         profileID: profile.id, key: key, variation: variation, sampleRate: format.sampleRate
                     )
-                    if let buffer = makeBuffer(samples) { variations.append(buffer) }
+                    for step in Self.pitchSteps {
+                        if let buffer = makeBuffer(Self.resample(samples, pitch: step)) {
+                            variations.append(buffer)
+                        }
+                    }
                 }
                 buffers[Key(profileID: profile.id, key: key)] = variations
             }
         }
+    }
+
+    /// Shifts pitch by playing the samples faster (pitch > 1) or slower, with linear
+    /// interpolation. Good enough for a few percent; also works for recorded samples.
+    static func resample(_ samples: [Float], pitch: Double) -> [Float] {
+        guard pitch != 1, samples.count > 1 else { return samples }
+        let count = Int(Double(samples.count - 1) / pitch) + 1
+        var out = [Float](repeating: 0, count: count)
+        for i in 0..<count {
+            let position = Double(i) * pitch
+            let index = Int(position)
+            let next = min(index + 1, samples.count - 1)
+            let fraction = Float(position - Double(index))
+            out[i] = samples[index] + (samples[next] - samples[index]) * fraction
+        }
+        return out
     }
 
     private func makeBuffer(_ samples: [Float]) -> AVAudioPCMBuffer? {
@@ -115,10 +203,12 @@ final class SoundEngine {
     }
 
     #if DEBUG
-    /// Writes every preloaded sound as a WAV file, for auditioning the placeholders.
+    /// Writes every preloaded sound at its natural pitch as a WAV file, for auditioning.
     func exportSounds(to directory: URL) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        for (key, variations) in buffers {
+        let middle = Self.pitchSteps.firstIndex(of: 1.0) ?? 0
+        for (key, all) in buffers {
+            let variations = stride(from: middle, to: all.count, by: Self.pitchSteps.count).map { all[$0] }
             for (index, buffer) in variations.enumerated() {
                 let url = directory.appendingPathComponent("\(key.profileID)-\(key.key.rawValue)-\(index + 1).wav")
                 let file = try AVAudioFile(forWriting: url, settings: format.settings)

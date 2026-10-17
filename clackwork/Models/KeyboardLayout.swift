@@ -56,9 +56,14 @@ nonisolated enum KeyboardLayout {
     }()
 }
 
-/// What the listener reports: the kind of key, whether it went down or up, and where it is drawn.
+/// What the listener reports: the kind of key, whether it went down or up, where it is drawn,
+/// and when it happened (for latency measurement only).
 nonisolated struct KeyEvent: Hashable {
     let type: KeyType
     let isDown: Bool
     let location: KeyboardLayout.Location?
+    /// Hardware event time, nanoseconds on the uptime clock.
+    var eventNanos: UInt64 = 0
+    /// When the event tap received it, nanoseconds on the uptime clock.
+    var tapNanos: UInt64 = 0
 }

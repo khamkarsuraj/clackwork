@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// One of the five keyboard sound profiles shipped in v1.0.
-struct KeyboardProfile: Identifiable, Hashable {
+nonisolated struct KeyboardProfile: Identifiable, Hashable, Sendable {
     let id: String
     let name: String
     let shortName: String
@@ -74,7 +74,7 @@ struct KeyboardProfile: Identifiable, Hashable {
     static let defaultProfile = all[1]
 }
 
-extension Color {
+nonisolated extension Color {
     init(hex: UInt32) {
         self.init(
             red: Double((hex >> 16) & 0xFF) / 255,
