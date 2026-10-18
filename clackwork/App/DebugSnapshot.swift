@@ -7,6 +7,7 @@ import SwiftUI
 ///
 /// `--snapshot /path/out.png [--dark]` renders the main window's layer tree to a PNG and quits.
 /// `--render-canvas /path/out.png [--dark]` renders `KeyboardsView` alone via ImageRenderer and quits.
+/// `--render-popover /path/out.png [--dark] [--popover-state off|muted|timed] [--popover-profile mx-red]` renders the menu bar popover and quits.
 /// `--export-sounds /path/dir` writes every loaded sound as a WAV file and quits.
 /// `--section settings` opens the window on that sidebar section (with any of the above).
 /// `--dump-views 1` prints the window's AppKit view tree with frames and quits.
@@ -42,6 +43,32 @@ enum DebugSnapshot {
                 let renderer = ImageRenderer(content: view)
                 renderer.scale = 2
                 write(renderer.nsImage, to: path)
+            }
+            return
+        }
+
+        if let path = value(after: "--render-popover", in: args) {
+            let defaults = UserDefaults(suiteName: "debug-popover")!
+            defaults.removePersistentDomain(forName: "debug-popover")
+            let state = AppState(defaults: defaults, engine: nil)
+            if let id = value(after: "--popover-profile", in: args),
+               let profile = KeyboardProfile.all.first(where: { $0.id == id }) {
+                state.selectedProfile = profile
+            }
+            switch value(after: "--popover-state", in: args) {
+            case "off": state.isEnabled = false
+            case "muted": state.mute()
+            case "timed": state.mute(for: 15 * 60)
+            default: break
+            }
+            let host = NSHostingView(rootView: PopoverView { _ in }.environmentObject(state))
+            host.frame.size = host.fittingSize
+            let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+            window.contentView = host
+            window.orderFrontRegardless()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                defer { NSApp.terminate(nil) }
+                render(host, in: window, to: path)
             }
             return
         }
@@ -169,35 +196,43 @@ enum DebugSnapshot {
             defer { NSApp.terminate(nil) }
             // Render the frame view (content + title bar + toolbar) when available.
             guard let window = NSApp.windows.first(where: { $0.isVisible }),
-                  let view = window.contentView?.superview ?? window.contentView,
-                  let layer = view.layer else {
+                  let view = window.contentView?.superview ?? window.contentView else {
                 FileHandle.standardError.write(Data("snapshot: no window\n".utf8))
                 return
             }
-            let scale = window.backingScaleFactor
-            let size = view.bounds.size
-            guard let rep = NSBitmapImageRep(
-                bitmapDataPlanes: nil, pixelsWide: Int(size.width * scale), pixelsHigh: Int(size.height * scale),
-                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
-                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
-            ), let context = NSGraphicsContext(bitmapImageRep: rep) else { return }
-            NSGraphicsContext.saveGraphicsState()
-            NSGraphicsContext.current = context
-            context.cgContext.scaleBy(x: scale, y: scale)
-            window.effectiveAppearance.performAsCurrentDrawingAppearance {
-                NSColor.windowBackgroundColor.setFill()
-                context.cgContext.fill(CGRect(origin: .zero, size: size))
-            }
-            if view.isFlipped || layer.isGeometryFlipped {
-                context.cgContext.translateBy(x: 0, y: size.height)
-                context.cgContext.scaleBy(x: 1, y: -1)
-            }
-            layer.render(in: context.cgContext)
-            NSGraphicsContext.restoreGraphicsState()
-            let image = NSImage(size: size)
-            image.addRepresentation(rep)
-            write(image, to: path)
+            render(view, in: window, to: path)
         }
+    }
+
+    /// Draws a view's layer tree over the window background and writes it as a PNG.
+    private static func render(_ view: NSView, in window: NSWindow, to path: String) {
+        guard let layer = view.layer else {
+            FileHandle.standardError.write(Data("snapshot: view has no layer\n".utf8))
+            return
+        }
+        let scale = window.backingScaleFactor
+        let size = view.bounds.size
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: Int(size.width * scale), pixelsHigh: Int(size.height * scale),
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+        ), let context = NSGraphicsContext(bitmapImageRep: rep) else { return }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        context.cgContext.scaleBy(x: scale, y: scale)
+        window.effectiveAppearance.performAsCurrentDrawingAppearance {
+            NSColor.windowBackgroundColor.setFill()
+            context.cgContext.fill(CGRect(origin: .zero, size: size))
+        }
+        if view.isFlipped || layer.isGeometryFlipped {
+            context.cgContext.translateBy(x: 0, y: size.height)
+            context.cgContext.scaleBy(x: 1, y: -1)
+        }
+        layer.render(in: context.cgContext)
+        NSGraphicsContext.restoreGraphicsState()
+        let image = NSImage(size: size)
+        image.addRepresentation(rep)
+        write(image, to: path)
     }
 
     private static func dump(_ view: NSView, depth: Int) {

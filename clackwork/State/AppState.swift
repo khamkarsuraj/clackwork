@@ -74,6 +74,8 @@ final class AppState: ObservableObject {
 
     /// When a timed mute ends, or nil for "until I unmute".
     @Published private(set) var muteEndsAt: Date?
+    /// The length the current timed mute was started with, or nil for "until I unmute".
+    @Published private(set) var muteDuration: TimeInterval?
     private var muteTimer: Timer?
 
     /// Whether macOS currently allows this app to listen to key events (Input Monitoring).
@@ -152,6 +154,7 @@ final class AppState: ObservableObject {
     func mute(for duration: TimeInterval? = nil) {
         muteTimer?.invalidate()
         isMuted = true
+        muteDuration = duration
         if let duration {
             muteEndsAt = Date().addingTimeInterval(duration)
             muteTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
@@ -166,6 +169,7 @@ final class AppState: ObservableObject {
         muteTimer?.invalidate()
         muteTimer = nil
         muteEndsAt = nil
+        muteDuration = nil
         isMuted = false
     }
 

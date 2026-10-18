@@ -21,17 +21,12 @@ enum SidebarSection: String, CaseIterable, Identifiable {
 /// The three-pane main window: toolbar, sidebar, and the selected section's canvas.
 struct MainWindowView: View {
     @EnvironmentObject private var appState: AppState
-    @State private var section: SidebarSection? = {
-        #if DEBUG
-        DebugSnapshot.initialSection ?? .keyboards
-        #else
-        .keyboards
-        #endif
-    }()
+    @EnvironmentObject private var router: WindowRouter
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         NavigationSplitView {
-            List(SidebarSection.allCases, selection: $section) { item in
+            List(SidebarSection.allCases, selection: $router.section) { item in
                 Label(item.rawValue, systemImage: item.symbol)
                     // No type-to-select: typing K or S while testing sounds must not switch sections.
                     .typeSelectEquivalent("")
@@ -42,13 +37,13 @@ struct MainWindowView: View {
             .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
         } detail: {
             Group {
-                switch section ?? .keyboards {
+                switch router.section ?? .keyboards {
                 case .keyboards: KeyboardsView()
                 case .shortcuts: ShortcutsView()
                 case .settings: SettingsView()
                 }
             }
-            .navigationTitle((section ?? .keyboards).rawValue)
+            .navigationTitle((router.section ?? .keyboards).rawValue)
             .toolbar {
                 if #available(macOS 26, *) {
                     ToolbarItem(placement: .primaryAction) {
@@ -61,6 +56,9 @@ struct MainWindowView: View {
                     }
                 }
             }
+        }
+        .onAppear {
+            router.openMainWindow = { [openWindow] in openWindow(id: "main") }
         }
     }
 }
@@ -107,5 +105,6 @@ private struct MasterToggle: View {
     MainWindowView()
         .environmentObject(AppState(defaults: UserDefaults(suiteName: "preview")!, engine: nil))
         .environmentObject(ShortcutStore(defaults: UserDefaults(suiteName: "preview")!))
+        .environmentObject(WindowRouter())
         .frame(width: 900, height: 600)
 }
