@@ -15,14 +15,17 @@ final class KeyPressAnimator {
 
     private var releaseTasks: [KeyboardIllustration.KeyID: Task<Void, Never>] = [:]
     private var occlusionObserver: NSObjectProtocol?
+    /// Whether any of the app's windows can be seen. Replaceable for tests.
+    private let isAppVisible: () -> Bool
 
-    init() {
+    init(isAppVisible: @escaping () -> Bool = { NSApp.occlusionState.contains(.visible) }) {
+        self.isAppVisible = isAppVisible
         // Key-ups are skipped while the app can't be seen, so start clean when it can be again.
         occlusionObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeOcclusionStateNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, !Self.isAppVisible else { return }
+                guard let self, !self.isAppVisible() else { return }
                 self.clear()
             }
         }
@@ -35,7 +38,7 @@ final class KeyPressAnimator {
     /// Real keys: sink on key down, pop up on key up. Skipped while no window is visible
     /// (minimized, hidden or covered), since nobody would see the animation.
     func handle(_ event: KeyEvent, reduceMotion: Bool) {
-        guard let location = event.location, Self.isAppVisible else { return }
+        guard let location = event.location, isAppVisible() else { return }
         releaseTasks[location]?.cancel()
         releaseTasks[location] = nil
         if reduceMotion { return }
@@ -65,6 +68,4 @@ final class KeyPressAnimator {
         releaseTasks.removeAll()
         if !pressedKeys.isEmpty { pressedKeys.removeAll() }
     }
-
-    private static var isAppVisible: Bool { NSApp.occlusionState.contains(.visible) }
 }

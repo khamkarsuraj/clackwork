@@ -46,16 +46,16 @@ private struct KeyboardKeys: NSViewRepresentable {
 
 /// One layer per key cap, with a darker lip along its bottom edge. A pressed key sinks and
 /// its lip thins, animated by Core Animation.
-private final class KeyboardKeysView: NSView {
+final class KeyboardKeysView: NSView {
     typealias KeyID = KeyboardIllustration.KeyID
 
     private static let layout = KeyboardLayout.rows
     private static let gap: CGFloat = 3
     private static let keyHeight: CGFloat = 19
     private static let cornerRadius: CGFloat = 3
-    private static let pressDepth: CGFloat = 2
-    private static let lipHeight: CGFloat = 3
-    private static let pressedLipHeight: CGFloat = 1
+    static let pressDepth: CGFloat = 2
+    static let lipHeight: CGFloat = 3
+    static let pressedLipHeight: CGFloat = 1
     private static let pressDuration: CFTimeInterval = 0.07
 
     /// Rows are a fixed height, so the board's height is known without measuring it.
@@ -158,6 +158,11 @@ private final class KeyboardKeysView: NSView {
                 y += Self.keyHeight + Self.gap
             }
         }
+    }
+
+    /// The cap and lip layers drawn for a key, for tests.
+    func layers(for id: KeyID) -> (cap: CALayer, lip: CALayer)? {
+        keys[id].map { ($0.cap, $0.lip) }
     }
 
     private func applyPress(to key: Key, isDown: Bool) {
