@@ -69,16 +69,35 @@ struct MainWindowView: View {
 private struct MasterToggle: View {
     @EnvironmentObject private var appState: AppState
 
+    /// Width of the widest status label, so the switch stays put when the status changes.
+    private static let labelWidth: CGFloat = {
+        let font = NSFont.preferredFont(forTextStyle: .caption1)
+        return ["Sound on", "Sound off", "Muted"]
+            .map { ($0 as NSString).size(withAttributes: [.font: font]).width.rounded(.up) }
+            .max() ?? 0
+    }()
+
+    private var status: String {
+        appState.isEnabled ? (appState.isMuted ? "Muted" : "Sound on") : "Sound off"
+    }
+
     var body: some View {
         HStack(spacing: 6) {
-            Text(appState.isEnabled ? (appState.isMuted ? "Muted" : "Sound on") : "Sound off")
+            Text(status)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .fixedSize()
+                // While the sidebar animates the toolbar can briefly offer less room. The label
+                // is clipped from the leading edge then, so the item never overflows into the
+                // toolbar's chevron menu and the switch never moves.
+                .frame(minWidth: 0, idealWidth: Self.labelWidth, maxWidth: Self.labelWidth, alignment: .trailing)
+                .clipped()
             Toggle("Sound", isOn: $appState.isEnabled)
                 .toggleStyle(.switch)
                 .controlSize(.small)
                 .labelsHidden()
                 .accessibilityLabel("Sound")
+                .fixedSize()
         }
         .padding(.trailing, 4)
     }
