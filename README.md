@@ -68,12 +68,30 @@ To compare IO buffer sizes, add `-ioBufferFrames 128` or any other size.
 
 Bluetooth headphones add 100 ms or more of their own latency, which the app can't reduce. Measure with built-in speakers or wired output.
 
+## Measuring CPU
+
+CPU must stay under 1% on average while idle and under 5% during sustained fast typing (PRD NFR, issue #33). Measure a Release build; Debug builds are unoptimized and not representative.
+
+Add the launch argument `-measureCPU YES`, either in Xcode (Product > Scheme > Edit Scheme > Run, with Build Configuration set to Release) or from Terminal:
+
+```
+open clackwork.app --args -measureCPU YES
+```
+
+Every 15 seconds the probe logs the app's average CPU, as a percentage of one core (the same scale as Activity Monitor). It splits the time into three parts. Typing is seconds with at least one key press, and the log also shows the typing rate. Settling is the first 5 seconds after the last key, while sounds and animations finish. Idle is everything after that. It skips the first 10 seconds after launch, and it counts key presses only, never which key was pressed. To watch the log outside Xcode:
+
+```
+log stream --predicate 'subsystem == "com.surajkhamkar.clackwork" && category == "cpu"'
+```
+
+For the typing number, type fast and steadily for at least 15 seconds in another app. Check idle both with the main window open and with it closed.
+
 ## Project layout
 
 ```
 clackwork/
 ├── App/          App entry, object container, debug tooling
-├── Diagnostics/  Latency probe
+├── Diagnostics/  Latency and CPU probes
 ├── Audio/        Sound engine and recorded pack loader
 ├── Listener/     System-wide key event tap
 ├── Models/       Profiles, key types, keyboard layout, shortcuts

@@ -6,9 +6,9 @@ struct KeyboardsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var pressedKeys: Set<KeyboardIllustration.KeyID> = []
+    /// Tells the keyboard illustration which keys are down, without going through SwiftUI state.
+    @State private var animator = KeyPressAnimator()
     @State private var typedText = ""
-    @State private var releaseTasks: [KeyboardIllustration.KeyID: Task<Void, Never>] = [:]
     @State private var previewTask: Task<Void, Never>?
     @State private var previousLength = 0
 
@@ -31,23 +31,14 @@ struct KeyboardsView: View {
             HStack(alignment: .top, spacing: 28) {
                 KeyboardIllustration(
                     palette: appState.selectedProfile.palette(for: colorScheme),
-                    pressedKeys: pressedKeys
+                    animator: animator
                 )
                 .frame(width: 340)
                 .onReceive(appState.keyEvents) { event in
-                    // Real keys: sink on key down, pop up on key up.
-                    guard let location = event.location else { return }
-                    releaseTasks[location]?.cancel()
-                    releaseTasks[location] = nil
-                    if reduceMotion { return }
-                    if event.isDown {
-                        pressedKeys.insert(location)
-                    } else {
-                        pressedKeys.remove(location)
-                    }
+                    animator.handle(event, reduceMotion: reduceMotion)
                 }
                 .onChange(of: appState.isListening) { _ in
-                    pressedKeys.removeAll()
+                    animator.clear()
                 }
 
                 details
@@ -202,18 +193,8 @@ struct KeyboardsView: View {
         press(key == .space ? .space : .random())
     }
 
-    /// Sinks a key for a moment. Used for mouse-driven sounds (cards, Preview) and for the
-    /// test field when the system-wide listener isn't running.
     private func press(_ key: KeyboardIllustration.KeyID) {
-        guard !reduceMotion else { return }
-        releaseTasks[key]?.cancel()
-        pressedKeys.insert(key)
-        releaseTasks[key] = Task {
-            try? await Task.sleep(nanoseconds: 140_000_000)
-            guard !Task.isCancelled else { return }
-            pressedKeys.remove(key)
-            releaseTasks[key] = nil
-        }
+        animator.press(key, reduceMotion: reduceMotion)
     }
 }
 

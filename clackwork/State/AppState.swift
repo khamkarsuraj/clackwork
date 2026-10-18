@@ -117,8 +117,10 @@ final class AppState: ObservableObject {
         // Sound is played on the listener thread; only the UI update hops to the main thread.
         let gate = gate
         let probe = LatencyProbe.isEnabled ? LatencyProbe() : nil
+        let cpuProbe = CPUProbe.isEnabled ? CPUProbe() : nil
         listener = KeyListener(
             onKeyDown: { [engine] event in
+                cpuProbe?.keyPressed()
                 guard let engine, let profileID = gate.profileToPlay else { return }
                 engine.play(event.type, profileID: profileID)
                 probe?.record(eventNanos: event.eventNanos, tapNanos: event.tapNanos,
