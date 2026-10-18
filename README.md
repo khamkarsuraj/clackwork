@@ -23,6 +23,18 @@ Early v1.0 development.
 - Xcode 26 or later. Deployment target is macOS 13 Ventura.
 - Open `clackwork.xcodeproj`, select the `clackwork` scheme, and press Cmd+R.
 
+## Tests
+
+Press Cmd+U in Xcode, or run:
+
+```
+xcodebuild test -project clackwork.xcodeproj -scheme clackwork -destination 'platform=macOS'
+```
+
+Unit tests live in `clackworkTests/` and use Swift Testing. Each suite names the PRD requirement or issue it covers. They need no sound packs, audio device or Input Monitoring permission. The keyboard animation test briefly opens a small borderless window.
+
+CI runs the same tests on every pull request and on every push to `main` (`.github/workflows/ci.yml`). Mark `build-and-test` as a required check in the branch settings so a pull request can't merge until it passes. CPU, memory and latency targets are still measured by hand; see the sections below.
+
 ## Permissions
 
 Hearing keys in other apps requires **Input Monitoring**. Click "Allow Input Monitoring…" in the app, then enable Clackwork in System Settings. Listening starts on its own within a few seconds, with no relaunch.
@@ -99,6 +111,7 @@ clackwork/
 ├── Sounds/       Recorded sound packs bundled with the app, and their license notices
 ├── State/        App state and shortcut store
 └── Views/        Main window, Keyboards, Settings, Shortcuts
+clackworkTests/   Unit tests
 ```
 
 ## Sound packs

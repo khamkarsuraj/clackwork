@@ -24,3 +24,6 @@ playground.xcworkspace
 docs/
 assets/
 clackwork/Sounds/
+
+# Test results
+*.xcresult
