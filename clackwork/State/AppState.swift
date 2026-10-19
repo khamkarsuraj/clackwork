@@ -105,8 +105,8 @@ final class AppState: ObservableObject {
         volume = defaults.object(forKey: Key.volume) as? Double ?? 0.7
 
         launchAtLogin = SMAppService.mainApp.status == .enabled
-        // Default stays on until the menu bar item exists; the design's default is off.
-        showDockIcon = defaults.object(forKey: Key.showDockIcon) as? Bool ?? true
+        // Off by default: the menu bar item is how Clackwork is reached.
+        showDockIcon = defaults.object(forKey: Key.showDockIcon) as? Bool ?? false
         stereoPositioning = defaults.object(forKey: Key.stereo) as? Bool ?? false
         autoMuteDuringCalls = defaults.object(forKey: Key.autoMute) as? Bool ?? false
         hasInputMonitoringAccess = KeyListener.hasAccess
