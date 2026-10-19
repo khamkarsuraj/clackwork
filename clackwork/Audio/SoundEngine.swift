@@ -134,7 +134,11 @@ nonisolated final class SoundEngine: @unchecked Sendable {
             DispatchQueue.main.async { [weak self] in self?.start() }
             return
         }
-        let buffer = options.randomElement()!
+        schedule(options.randomElement()!)
+    }
+
+    /// Plays a buffer on the next voice in the pool.
+    private func schedule(_ buffer: AVAudioPCMBuffer) {
         voiceLock.withLock { next in
             let voice = voices[next]
             next = (next + 1) % voices.count
@@ -148,6 +152,12 @@ nonisolated final class SoundEngine: @unchecked Sendable {
 
     private func start() {
         guard !engine.isRunning else { return }
+        // Voices come out of an engine restart (device change, sleep/wake) broken: they still
+        // report isPlaying, so play() is never called again and every buffer scheduled on
+        // them is dropped. Stopping them lets the next key start them fresh (issue #41).
+        voiceLock.withLock { _ in
+            for voice in voices { voice.stop() }
+        }
         applyPreferredBufferSize()
         engine.prepare()
         do {
@@ -218,6 +228,42 @@ nonisolated final class SoundEngine: @unchecked Sendable {
     }
 
     #if DEBUG
+    /// For tests: stops the engine the way an output device change does, then recovers.
+    func simulateConfigurationChange() {
+        engine.stop()
+        start()
+    }
+
+    /// For tests: whether the engine is running and every voice is ready to be started by
+    /// the next key. A voice that claims to be playing after a restart renders nothing.
+    var isReadyToPlay: Bool {
+        engine.isRunning && voiceLock.withLock { _ in voices.allSatisfy { !$0.isPlaying } }
+    }
+
+    /// For tests: plays a short synthetic tone through the normal voice path and returns the
+    /// peak level that voice rendered, with the mixer silenced so nothing is audible.
+    func renderedPeakOfTestTone() -> Float {
+        let samples = [Float](repeating: 0.5, count: Int(format.sampleRate / 5))
+        guard let buffer = makeBuffer(samples) else { return 0 }
+        let voice = voiceLock.withLock { voices[$0] }
+        let savedVolume = engine.mainMixerNode.outputVolume
+        engine.mainMixerNode.outputVolume = 0
+        defer { engine.mainMixerNode.outputVolume = savedVolume }
+
+        let peak = OSAllocatedUnfairLock(initialState: Float(0))
+        voice.installTap(onBus: 0, bufferSize: 512, format: nil) { rendered, _ in
+            guard let channel = rendered.floatChannelData?[0] else { return }
+            let frames = Int(rendered.frameLength)
+            let max = (0..<frames).reduce(Float(0)) { Swift.max($0, abs(channel[$1])) }
+            peak.withLock { $0 = Swift.max($0, max) }
+        }
+        defer { voice.removeTap(onBus: 0) }
+        schedule(buffer)
+        // The tap reports on the audio thread, so waiting needs no run loop (tests run off main).
+        Thread.sleep(forTimeInterval: 0.3)
+        return peak.withLock { $0 }
+    }
+
     /// Writes every loaded sound at its natural pitch as a WAV file, for auditioning.
     func exportSounds(to directory: URL) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
