@@ -12,6 +12,7 @@ import SwiftUI
 /// `--section settings` opens the window on that sidebar section (with any of the above).
 /// `--dump-views 1` prints the window's AppKit view tree with frames and quits.
 /// `--stress-sounds 300` plays that many random keys 12 ms apart from two threads, then quits.
+/// `--render-hud /path/out.png [--dark] [--hud-action toggleMute|toggleSound|nextKeyboard|volumeUp]` renders the shortcut HUD and quits.
 /// `--test-shortcuts 1` runs every shortcut action through the hot key router and prints the state.
 /// `--test-keymap 1` prints how sample key codes are classified and whether Input Monitoring is granted.
 /// `--latency-report 1` prints the audio device's buffer and output latency, then quits.
@@ -110,13 +111,33 @@ enum DebugSnapshot {
             return
         }
 
+        if let path = value(after: "--render-hud", in: args) {
+            let state = AppState(defaults: UserDefaults(suiteName: "debug-hud")!, engine: nil)
+            let store = ShortcutStore(defaults: UserDefaults(suiteName: "debug-hud")!)
+            let action = value(after: "--hud-action", in: args).flatMap(ShortcutAction.init(rawValue:)) ?? .toggleMute
+            switch action {
+            case .toggleMute: state.mute()
+            case .toggleSound: state.isEnabled = false
+            default: break
+            }
+            let hud = HUDController(reduceMotion: { true })
+            hud.show(HUDContent(after: action, isEnabled: state.isEnabled, isMuted: state.isMuted,
+                                profile: state.selectedProfile, volume: 0.6, combo: store.combo(for: action)))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                defer { NSApp.terminate(nil) }
+                guard let panel = hud.panel, let view = panel.contentView else { return }
+                render(view, in: panel, to: path)
+            }
+            return
+        }
+
         if args.contains("--test-shortcuts") {
             defer { NSApp.terminate(nil) }
             let defaults = UserDefaults(suiteName: "debug-shortcuts")!
             defaults.removePersistentDomain(forName: "debug-shortcuts")
             let state = AppState(defaults: defaults, engine: nil)
             let store = ShortcutStore(defaults: defaults)
-            let center = HotKeyCenter(appState: state, shortcuts: store)
+            let center = HotKeyCenter(appState: state, shortcuts: store, hud: HUDController())
             func report(_ label: String) {
                 print("\(label): enabled=\(state.isEnabled) muted=\(state.isMuted) profile=\(state.selectedProfile.id) volume=\(String(format: "%.2f", state.volume))")
             }

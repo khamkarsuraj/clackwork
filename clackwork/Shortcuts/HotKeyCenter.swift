@@ -8,6 +8,8 @@ import Combine
 /// and needs no Accessibility or Input Monitoring permission.
 final class HotKeyCenter {
     private let appState: AppState
+    private let shortcuts: ShortcutStore
+    private let hud: HUDController
     private var registered: [UInt32: EventHotKeyRef] = [:]
     private var handler: EventHandlerRef?
     private var subscriptions: Set<AnyCancellable> = []
@@ -15,8 +17,10 @@ final class HotKeyCenter {
     private static let signature: OSType = 0x434C434B // "CLCK"
     private static let actions = ShortcutAction.allCases
 
-    init(appState: AppState, shortcuts: ShortcutStore) {
+    init(appState: AppState, shortcuts: ShortcutStore, hud: HUDController) {
         self.appState = appState
+        self.shortcuts = shortcuts
+        self.hud = hud
         installHandler()
         // @Published emits before the property is written, so always register from the
         // emitted values rather than re-reading the store.
@@ -40,6 +44,7 @@ final class HotKeyCenter {
         perform(Self.actions[Int(id)])
     }
 
+    /// Runs the action, then shows the new state in the HUD (design principle 5).
     func perform(_ action: ShortcutAction) {
         switch action {
         case .toggleSound: appState.isEnabled.toggle()
@@ -49,6 +54,12 @@ final class HotKeyCenter {
         case .volumeUp: appState.adjustVolume(by: 0.05)
         case .volumeDown: appState.adjustVolume(by: -0.05)
         }
+        guard appState.showHUD else { return }
+        hud.show(HUDContent(
+            after: action, isEnabled: appState.isEnabled, isMuted: appState.isMuted,
+            profile: appState.selectedProfile, volume: appState.volume,
+            combo: shortcuts.combo(for: action)
+        ))
     }
 
     private func register(_ combos: [ShortcutAction: KeyCombo?]) {

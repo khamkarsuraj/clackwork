@@ -14,7 +14,12 @@ struct KeyCombo: Codable, Hashable {
     var modifierFlags: NSEvent.ModifierFlags { NSEvent.ModifierFlags(rawValue: modifiers) }
 
     /// "⌃ ⌥ K" style text, in Apple's modifier order.
-    var display: String {
+    var display: String { parts.joined(separator: " ") }
+
+    /// "⌃⌥K" style text, for running prose such as the HUD's "⌃⌥K to turn on".
+    var compactDisplay: String { parts.joined() }
+
+    private var parts: [String] {
         var parts: [String] = []
         let flags = modifierFlags
         if flags.contains(.control) { parts.append("⌃") }
@@ -22,7 +27,7 @@ struct KeyCombo: Codable, Hashable {
         if flags.contains(.shift) { parts.append("⇧") }
         if flags.contains(.command) { parts.append("⌘") }
         parts.append(KeyCombo.keyName(for: keyCode))
-        return parts.joined(separator: " ")
+        return parts
     }
 
     /// Global shortcuts must include at least one modifier so plain typing never triggers them.
