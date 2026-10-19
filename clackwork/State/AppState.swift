@@ -10,6 +10,7 @@ final class AppState: ObservableObject {
         static let profile = "selectedProfileID"
         static let volume = "volume"
         static let showDockIcon = "showDockIcon"
+        static let showHUD = "showHUD"
         static let stereo = "stereoPositioning"
         static let autoMute = "autoMuteDuringCalls"
     }
@@ -54,6 +55,11 @@ final class AppState: ObservableObject {
             defaults.set(showDockIcon, forKey: Key.showDockIcon)
             applyDockIcon()
         }
+    }
+
+    /// Briefly show what a shortcut changed, like the system volume overlay.
+    @Published var showHUD: Bool {
+        didSet { defaults.set(showHUD, forKey: Key.showHUD) }
     }
 
     // MARK: Sound settings (stored now, used by the engine in a later step)
@@ -107,6 +113,7 @@ final class AppState: ObservableObject {
         launchAtLogin = SMAppService.mainApp.status == .enabled
         // Off by default: the menu bar item is how Clackwork is reached.
         showDockIcon = defaults.object(forKey: Key.showDockIcon) as? Bool ?? false
+        showHUD = defaults.object(forKey: Key.showHUD) as? Bool ?? true
         stereoPositioning = defaults.object(forKey: Key.stereo) as? Bool ?? false
         autoMuteDuringCalls = defaults.object(forKey: Key.autoMute) as? Bool ?? false
         hasInputMonitoringAccess = KeyListener.hasAccess

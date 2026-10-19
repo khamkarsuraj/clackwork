@@ -13,6 +13,9 @@ struct SettingsView: View {
                 SettingRow("Show icon in Dock", help: "Off keeps Clackwork in the menu bar only.") {
                     Toggle("Show icon in Dock", isOn: $appState.showDockIcon)
                 }
+                SettingRow("Show HUD for shortcuts", help: "Briefly show what changed, like the volume overlay.") {
+                    Toggle("Show HUD for shortcuts", isOn: $appState.showHUD)
+                }
             }
 
             Section("Sound") {
