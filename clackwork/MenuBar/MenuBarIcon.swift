@@ -6,9 +6,10 @@ enum MenuBarIcon {
     enum State: Equatable {
         case on, muted, off
 
-        /// Off wins over muted: a muted app that is turned off shows as off.
-        init(isEnabled: Bool, isMuted: Bool) {
-            self = !isEnabled ? .off : (isMuted ? .muted : .on)
+        /// Off wins over muted: a muted app that is turned off shows as off. Muted by the
+        /// user or automatically (microphone in use) looks the same: no sound is coming.
+        init(isEnabled: Bool, isMuted: Bool, isAutoMuted: Bool = false) {
+            self = !isEnabled ? .off : (isMuted || isAutoMuted ? .muted : .on)
         }
 
         var accessibilityDescription: String {

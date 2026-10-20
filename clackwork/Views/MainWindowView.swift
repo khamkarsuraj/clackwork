@@ -82,7 +82,7 @@ private struct MasterToggle: View {
     }()
 
     private var status: String {
-        appState.isEnabled ? (appState.isMuted ? "Muted" : "Sound on") : "Sound off"
+        appState.isEnabled ? (appState.isMuted || appState.isAutoMuted ? "Muted" : "Sound on") : "Sound off"
     }
 
     var body: some View {

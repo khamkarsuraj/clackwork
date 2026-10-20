@@ -14,6 +14,7 @@ import SwiftUI
 /// `--stress-sounds 300` plays that many random keys 12 ms apart from two threads, then quits.
 /// `--render-cheatsheet /path/out.png [--dark]` renders the shortcut cheat sheet and quits.
 /// `--render-hud /path/out.png [--dark] [--hud-action toggleMute|toggleSound|nextKeyboard|volumeUp]` renders the shortcut HUD and quits.
+/// `--mic-report 1` prints which processes CoreAudio reports as running audio input, and quits.
 /// `--test-shortcuts 1` runs every shortcut action through the hot key router and prints the state.
 /// `--test-keymap 1` prints how sample key codes are classified and whether Input Monitoring is granted.
 /// `--latency-report 1` prints the audio device's buffer and output latency, then quits.
@@ -134,6 +135,21 @@ enum DebugSnapshot {
                 defer { NSApp.terminate(nil) }
                 guard let panel = hud.panel, let view = panel.contentView else { return }
                 render(view, in: panel, to: path)
+            }
+            return
+        }
+
+        if args.contains("--mic-report") {
+            defer { NSApp.terminate(nil) }
+            if let processes = MicrophoneMonitor.processes() {
+                print("mic: process API available; \(processes.count) processes known to CoreAudio")
+                for p in processes where p.isRunningInput {
+                    let note = MicrophoneMonitor.isSystemListener(p) ? " (system listener, ignored)" : ""
+                    print("mic: running input: \(p.bundleID ?? "?") (pid \(p.pid))\(note)")
+                }
+                print("mic: in use = \(MicrophoneMonitor.anyRunningInput(processes, ownPID: getpid()))")
+            } else {
+                print("mic: process API unavailable (needs macOS 14.2); auto-mute is unsupported here")
             }
             return
         }

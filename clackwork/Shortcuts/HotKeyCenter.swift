@@ -63,6 +63,7 @@ final class HotKeyCenter {
         guard appState.showHUD else { return }
         hud.show(HUDContent(
             after: action, isEnabled: appState.isEnabled, isMuted: appState.isMuted,
+            isAutoMuted: appState.isAutoMuted,
             profile: appState.selectedProfile, volume: appState.volume,
             combo: shortcuts.combo(for: action)
         ))

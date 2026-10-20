@@ -63,9 +63,23 @@ final class AppState: ObservableObject {
 
     // MARK: Sound settings (stored now, used by the engine in a later step)
 
+    /// Stay silent while any app uses the microphone (FR-15).
     @Published var autoMuteDuringCalls: Bool {
-        didSet { defaults.set(autoMuteDuringCalls, forKey: Key.autoMute) }
+        didSet {
+            defaults.set(autoMuteDuringCalls, forKey: Key.autoMute)
+            applyAutoMuteSetting()
+        }
     }
+
+    // MARK: Auto-mute (FR-15)
+
+    /// Muted by the app itself because the microphone is in use. Separate from `isMuted`,
+    /// so a call ending never undoes a mute the user chose, and vice versa.
+    @Published private(set) var isAutoMuted = false {
+        didSet { gate.update(isAutoMuted: isAutoMuted) }
+    }
+    /// Watches the microphone only while the setting is on.
+    let microphone: MicrophoneMonitor
 
     // MARK: Mute (FR-13): the app keeps running but stays silent. Not persisted across launches.
 
@@ -94,16 +108,20 @@ final class AppState: ObservableObject {
     private let gate = PlaybackGate()
     private var permissionPoll: Timer?
     private var activationObserver: NSObjectProtocol?
+    private var subscriptions: Set<AnyCancellable> = []
     private let defaults: UserDefaults
     /// Whether macOS grants Input Monitoring right now. Injected so tests can flip it.
     private let permissionCheck: () -> Bool
 
-    /// Pass `engine: nil` for previews and tests that should stay silent.
+    /// Pass `engine: nil` for previews and tests that should stay silent, and
+    /// `microphone: MicrophoneMonitor(live: false)` for tests that must not read the HAL.
     init(defaults: UserDefaults = .standard, engine: SoundEngine? = SoundEngine(),
-         permissionCheck: @escaping () -> Bool = { KeyListener.hasAccess }) {
+         permissionCheck: @escaping () -> Bool = { KeyListener.hasAccess },
+         microphone: MicrophoneMonitor = MicrophoneMonitor()) {
         self.defaults = defaults
         self.engine = engine
         self.permissionCheck = permissionCheck
+        self.microphone = microphone
         isEnabled = defaults.object(forKey: Key.enabled) as? Bool ?? true
         let savedID = defaults.string(forKey: Key.profile)
         selectedProfile = KeyboardProfile.all.first { $0.id == savedID } ?? .defaultProfile
@@ -120,6 +138,13 @@ final class AppState: ObservableObject {
         applyDockIcon()
 
         gate.update(isEnabled: isEnabled, isMuted: isMuted, profileID: selectedProfile.id)
+
+        // @Published emits before the property is written, so use the emitted value.
+        microphone.$isInUse
+            .dropFirst()
+            .sink { [weak self] inUse in self?.updateAutoMute(microphoneInUse: inUse) }
+            .store(in: &subscriptions)
+        applyAutoMuteSetting()
 
         // Sound is played on the listener thread; only the UI update hops to the main thread.
         let gate = gate
@@ -160,8 +185,24 @@ final class AppState: ObservableObject {
 
     /// Plays the current profile's sound for a key, if sound is enabled and not muted.
     func play(_ key: KeyType) {
-        guard isEnabled, !isMuted else { return }
+        guard isEnabled, !isMuted, !isAutoMuted else { return }
         engine?.play(key, profile: selectedProfile)
+    }
+
+    // MARK: Auto-mute
+
+    private func applyAutoMuteSetting() {
+        if autoMuteDuringCalls {
+            microphone.start()
+        } else {
+            microphone.stop()
+        }
+        updateAutoMute(microphoneInUse: microphone.isInUse)
+    }
+
+    private func updateAutoMute(microphoneInUse: Bool) {
+        let next = autoMuteDuringCalls && microphoneInUse
+        if next != isAutoMuted { isAutoMuted = next }
     }
 
     // MARK: Shortcut actions
