@@ -39,6 +39,9 @@ struct HUDContent: Equatable {
             self.init(icon: .profile(profile), title: profile.name, detail: "Keyboard \(position) of \(all.count)")
         case .volumeUp, .volumeDown:
             self.init(volume: volume)
+        case .showShortcuts:
+            // Not shown: the sheet itself is the feedback. Here so the switch stays exhaustive.
+            self.init(icon: .symbol("command"), title: "Keyboard shortcuts", detail: nil)
         }
     }
 

@@ -51,10 +51,11 @@ The key listener is listen-only. It passes on only the key category, such as sta
 
 | Action                    | Shortcut  |
 | ------------------------- | --------- |
-| Sound on or off           | ⌃⌥K       |
+| Sound on or off           | ⌃⌥O       |
 | Mute or unmute            | ⌃⌥M       |
 | Next or previous keyboard | ⌃⌥→ / ⌃⌥← |
 | Volume up or down         | ⌃⌥↑ / ⌃⌥↓ |
+| Show keyboard shortcuts   | ⌃⌥S       |
 
 ## Measuring latency
 

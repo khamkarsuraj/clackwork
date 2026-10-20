@@ -16,6 +16,13 @@ struct ClackworkApp: App {
         }
         .defaultSize(width: 900, height: 600)
         .windowResizability(.contentMinSize)
+        .commands {
+            CommandGroup(after: .help) {
+                // No key equivalent here: the global "Show keyboard shortcuts" hot key
+                // (⌃⌥S by default) already covers it, inside the app and out.
+                Button("Keyboard Shortcuts") { container.router.toggleShortcutSheet() }
+            }
+        }
     }
 }
 

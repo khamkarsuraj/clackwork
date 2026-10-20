@@ -57,9 +57,15 @@ struct MainWindowView: View {
                 }
             }
         }
+        .sheet(isPresented: $router.isShowingShortcutSheet) {
+            ShortcutCheatSheet()
+        }
         .onAppear {
             router.openMainWindow = { [openWindow] in openWindow(id: "main") }
         }
+        // A sheet dies with its window; the flag must not outlive it, or reopening the
+        // window would show the sheet unasked.
+        .onDisappear { router.isShowingShortcutSheet = false }
     }
 }
 

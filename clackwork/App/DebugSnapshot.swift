@@ -12,6 +12,7 @@ import SwiftUI
 /// `--section settings` opens the window on that sidebar section (with any of the above).
 /// `--dump-views 1` prints the window's AppKit view tree with frames and quits.
 /// `--stress-sounds 300` plays that many random keys 12 ms apart from two threads, then quits.
+/// `--render-cheatsheet /path/out.png [--dark]` renders the shortcut cheat sheet and quits.
 /// `--render-hud /path/out.png [--dark] [--hud-action toggleMute|toggleSound|nextKeyboard|volumeUp]` renders the shortcut HUD and quits.
 /// `--test-shortcuts 1` runs every shortcut action through the hot key router and prints the state.
 /// `--test-keymap 1` prints how sample key codes are classified and whether Input Monitoring is granted.
@@ -33,17 +34,11 @@ enum DebugSnapshot {
         if dark { NSApp.appearance = NSAppearance(named: .darkAqua) }
 
         if let path = value(after: "--render-canvas", in: args) {
-            DispatchQueue.main.async {
-                defer { NSApp.terminate(nil) }
-                let state = AppState(defaults: UserDefaults(suiteName: "debug-snapshot")!)
-                let view = KeyboardsView()
+            let state = AppState(defaults: UserDefaults(suiteName: "debug-snapshot")!)
+            renderAndQuit(to: path, dark: dark) {
+                KeyboardsView()
                     .environmentObject(state)
                     .frame(width: 700, height: 548)
-                    .background(Color(nsColor: .windowBackgroundColor))
-                    .environment(\.colorScheme, dark ? .dark : .light)
-                let renderer = ImageRenderer(content: view)
-                renderer.scale = 2
-                write(renderer.nsImage, to: path)
             }
             return
         }
@@ -111,6 +106,18 @@ enum DebugSnapshot {
             return
         }
 
+        if let path = value(after: "--render-cheatsheet", in: args) {
+            let defaults = UserDefaults(suiteName: "debug-cheatsheet")!
+            defaults.removePersistentDomain(forName: "debug-cheatsheet")
+            let store = ShortcutStore(defaults: defaults)
+            renderAndQuit(to: path, dark: dark) {
+                ShortcutCheatSheet()
+                    .environmentObject(store)
+                    .environmentObject(WindowRouter())
+            }
+            return
+        }
+
         if let path = value(after: "--render-hud", in: args) {
             let state = AppState(defaults: UserDefaults(suiteName: "debug-hud")!, engine: nil)
             let store = ShortcutStore(defaults: UserDefaults(suiteName: "debug-hud")!)
@@ -137,7 +144,7 @@ enum DebugSnapshot {
             defaults.removePersistentDomain(forName: "debug-shortcuts")
             let state = AppState(defaults: defaults, engine: nil)
             let store = ShortcutStore(defaults: defaults)
-            let center = HotKeyCenter(appState: state, shortcuts: store, hud: HUDController())
+            let center = HotKeyCenter(appState: state, shortcuts: store, hud: HUDController(), router: WindowRouter())
             func report(_ label: String) {
                 print("\(label): enabled=\(state.isEnabled) muted=\(state.isMuted) profile=\(state.selectedProfile.id) volume=\(String(format: "%.2f", state.volume))")
             }
@@ -222,6 +229,20 @@ enum DebugSnapshot {
                 return
             }
             render(view, in: window, to: path)
+        }
+    }
+
+    /// Renders a SwiftUI view on the window background at 2x with ImageRenderer, writes it
+    /// as a PNG and quits. For views without materials; those need a real window (`render`).
+    private static func renderAndQuit(to path: String, dark: Bool, @ViewBuilder content: @escaping () -> some View) {
+        DispatchQueue.main.async {
+            defer { NSApp.terminate(nil) }
+            let view = content()
+                .background(Color(nsColor: .windowBackgroundColor))
+                .environment(\.colorScheme, dark ? .dark : .light)
+            let renderer = ImageRenderer(content: view)
+            renderer.scale = 2
+            write(renderer.nsImage, to: path)
         }
     }
 

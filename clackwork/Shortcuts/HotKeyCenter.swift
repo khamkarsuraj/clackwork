@@ -10,6 +10,7 @@ final class HotKeyCenter {
     private let appState: AppState
     private let shortcuts: ShortcutStore
     private let hud: HUDController
+    private let router: WindowRouter
     private var registered: [UInt32: EventHotKeyRef] = [:]
     private var handler: EventHandlerRef?
     private var subscriptions: Set<AnyCancellable> = []
@@ -17,10 +18,11 @@ final class HotKeyCenter {
     private static let signature: OSType = 0x434C434B // "CLCK"
     private static let actions = ShortcutAction.allCases
 
-    init(appState: AppState, shortcuts: ShortcutStore, hud: HUDController) {
+    init(appState: AppState, shortcuts: ShortcutStore, hud: HUDController, router: WindowRouter) {
         self.appState = appState
         self.shortcuts = shortcuts
         self.hud = hud
+        self.router = router
         installHandler()
         // @Published emits before the property is written, so always register from the
         // emitted values rather than re-reading the store.
@@ -53,6 +55,10 @@ final class HotKeyCenter {
         case .previousKeyboard: appState.selectKeyboard(offset: -1)
         case .volumeUp: appState.adjustVolume(by: 0.05)
         case .volumeDown: appState.adjustVolume(by: -0.05)
+        case .showShortcuts:
+            // The sheet is its own feedback; no HUD.
+            router.toggleShortcutSheet()
+            return
         }
         guard appState.showHUD else { return }
         hud.show(HUDContent(

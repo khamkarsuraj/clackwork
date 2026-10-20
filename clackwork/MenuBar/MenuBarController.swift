@@ -96,9 +96,7 @@ final class MenuBarController: NSObject {
     /// Brings the main window forward, reopening it if it was closed.
     private func showMainWindow(section: SidebarSection?) {
         popover.performClose(nil)
-        if let section { router.section = section }
-        NSApp.activate(ignoringOtherApps: true)
-        router.openMainWindow?()
+        router.showMainWindow(section: section)
     }
 }
 

@@ -14,8 +14,8 @@ final class AppContainer: ObservableObject {
         appState = AppState()
         shortcuts = ShortcutStore()
         hud = HUDController()
-        hotKeys = HotKeyCenter(appState: appState, shortcuts: shortcuts, hud: hud)
         router = WindowRouter()
+        hotKeys = HotKeyCenter(appState: appState, shortcuts: shortcuts, hud: hud, router: router)
         menuBar = MenuBarController(appState: appState, router: router)
     }
 }
