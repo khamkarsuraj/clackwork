@@ -27,3 +27,6 @@ clackwork/Sounds/
 
 # Test results
 *.xcresult
+
+# LLVM coverage output from running an instrumented build by hand
+*.profraw
