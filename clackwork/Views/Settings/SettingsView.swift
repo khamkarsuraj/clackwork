@@ -19,8 +19,12 @@ struct SettingsView: View {
             }
 
             Section("Sound") {
-                SettingRow("Auto-mute during calls", help: "Stay silent while the microphone is in use.") {
+                SettingRow("Auto-mute during calls",
+                           help: MicrophoneMonitor.isSupported
+                               ? "Stay silent while the microphone is in use."
+                               : "Needs macOS 14.2 or later.") {
                     Toggle("Auto-mute during calls", isOn: $appState.autoMuteDuringCalls)
+                        .disabled(!MicrophoneMonitor.isSupported)
                 }
             }
 

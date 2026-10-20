@@ -76,13 +76,17 @@ private struct MasterToggle: View {
     /// Width of the widest status label, so the switch stays put when the status changes.
     private static let labelWidth: CGFloat = {
         let font = NSFont.preferredFont(forTextStyle: .caption1)
-        return ["Sound on", "Sound off", "Muted"]
+        return ["Sound on", "Sound off", "Muted", "Muted · microphone in use"]
             .map { ($0 as NSString).size(withAttributes: [.font: font]).width.rounded(.up) }
             .max() ?? 0
     }()
 
+    /// A manual mute wins over auto-mute in the wording, as in the popover: the user asked for it.
     private var status: String {
-        appState.isEnabled ? (appState.isMuted ? "Muted" : "Sound on") : "Sound off"
+        guard appState.isEnabled else { return "Sound off" }
+        if appState.isMuted { return "Muted" }
+        if appState.isAutoMuted { return "Muted · microphone in use" }
+        return "Sound on"
     }
 
     var body: some View {

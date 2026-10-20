@@ -16,7 +16,8 @@ Early v1.0 development.
 | Menu bar popover and icon states                                          | Not started                                |
 | Onboarding, HUD overlay                                                   | Not started                                |
 | In-house or confirmed-license recordings                                  | Not started                                |
-| Auto-mute during calls, per-app exclusions                                | Settings stored, behavior not built        |
+| Auto-mute while the microphone is in use                                  | Done                                       |
+| Per-app exclusions                                                        | Setting stored, behavior not built         |
 
 ## Build and run
 

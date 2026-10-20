@@ -26,8 +26,8 @@ final class MenuBarController: NSObject {
         // The icon follows the state whichever way it changes: popover, window or shortcut.
         // @Published emits before the property is written, so use the emitted values.
         appState.$isEnabled
-            .combineLatest(appState.$isMuted)
-            .map { MenuBarIcon.State(isEnabled: $0, isMuted: $1) }
+            .combineLatest(appState.$isMuted, appState.$isAutoMuted)
+            .map { MenuBarIcon.State(isEnabled: $0, isMuted: $1, isAutoMuted: $2) }
             .removeDuplicates()
             .sink { [weak self] state in
                 self?.statusItem.button?.image = MenuBarIcon.image(for: state)

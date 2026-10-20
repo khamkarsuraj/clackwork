@@ -17,8 +17,9 @@ struct HUDContent: Equatable {
     let progress: Double?
 
     /// The state right after `action` ran. `combo` is that action's own shortcut, used for
-    /// the hint, so a customized shortcut shows as the user set it.
-    init(after action: ShortcutAction, isEnabled: Bool, isMuted: Bool,
+    /// the hint, so a customized shortcut shows as the user set it. `isAutoMuted` says
+    /// whether the app is silent anyway because the microphone is in use.
+    init(after action: ShortcutAction, isEnabled: Bool, isMuted: Bool, isAutoMuted: Bool = false,
          profile: KeyboardProfile, volume: Double, combo: KeyCombo?) {
         switch action {
         case .toggleSound:
@@ -27,6 +28,10 @@ struct HUDContent: Equatable {
                 title: isEnabled ? "Sound on" : "Sound off",
                 detail: combo.map { "\($0.compactDisplay) to turn \(isEnabled ? "off" : "on")" }
             )
+        case .toggleMute where !isMuted && isAutoMuted:
+            // Unmuted by hand, but still silent: say why rather than promise sound.
+            self.init(icon: .symbol("speaker.slash.fill"), title: "Unmuted",
+                      detail: "Silent while the microphone is in use")
         case .toggleMute:
             self.init(
                 icon: .symbol(isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill"),

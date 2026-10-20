@@ -1,19 +1,21 @@
 #if DEBUG
 import AppKit
 import Carbon.HIToolbox
+import Combine
 import SwiftUI
 
 /// Development aid, active only in Debug builds.
 ///
 /// `--snapshot /path/out.png [--dark]` renders the main window's layer tree to a PNG and quits.
 /// `--render-canvas /path/out.png [--dark]` renders `KeyboardsView` alone via ImageRenderer and quits.
-/// `--render-popover /path/out.png [--dark] [--popover-state off|muted|timed] [--popover-profile mx-red]` renders the menu bar popover and quits.
+/// `--render-popover /path/out.png [--dark] [--popover-state off|muted|timed|automuted] [--popover-profile mx-red]` renders the menu bar popover and quits.
 /// `--export-sounds /path/dir` writes every loaded sound as a WAV file and quits.
 /// `--section settings` opens the window on that sidebar section (with any of the above).
 /// `--dump-views 1` prints the window's AppKit view tree with frames and quits.
 /// `--stress-sounds 300` plays that many random keys 12 ms apart from two threads, then quits.
 /// `--render-cheatsheet /path/out.png [--dark]` renders the shortcut cheat sheet and quits.
 /// `--render-hud /path/out.png [--dark] [--hud-action toggleMute|toggleSound|nextKeyboard|volumeUp]` renders the shortcut HUD and quits.
+/// `--mic-report 1` prints which processes CoreAudio reports as running audio input, and quits.
 /// `--test-shortcuts 1` runs every shortcut action through the hot key router and prints the state.
 /// `--test-keymap 1` prints how sample key codes are classified and whether Input Monitoring is granted.
 /// `--latency-report 1` prints the audio device's buffer and output latency, then quits.
@@ -46,7 +48,7 @@ enum DebugSnapshot {
         if let path = value(after: "--render-popover", in: args) {
             let defaults = UserDefaults(suiteName: "debug-popover")!
             defaults.removePersistentDomain(forName: "debug-popover")
-            let state = AppState(defaults: defaults, engine: nil)
+            let state = AppState(defaults: defaults, engine: nil, microphone: MicrophoneMonitor(live: false))
             if let id = value(after: "--popover-profile", in: args),
                let profile = KeyboardProfile.all.first(where: { $0.id == id }) {
                 state.selectedProfile = profile
@@ -55,6 +57,9 @@ enum DebugSnapshot {
             case "off": state.isEnabled = false
             case "muted": state.mute()
             case "timed": state.mute(for: 15 * 60)
+            case "automuted":
+                state.autoMuteDuringCalls = true
+                state.microphone.simulate(inUse: true)
             default: break
             }
             let host = NSHostingView(rootView: PopoverView { _ in }.environmentObject(state))
@@ -134,6 +139,49 @@ enum DebugSnapshot {
                 defer { NSApp.terminate(nil) }
                 guard let panel = hud.panel, let view = panel.contentView else { return }
                 render(view, in: panel, to: path)
+            }
+            return
+        }
+
+        if args.contains("--mic-report") {
+            defer { NSApp.terminate(nil) }
+            if let processes = MicrophoneMonitor.processes() {
+                print("mic: process API available; \(processes.count) processes known to CoreAudio")
+                for p in processes where p.isRunningInput {
+                    let note = MicrophoneMonitor.isSystemListener(p) ? " (system listener, ignored)" : ""
+                    print("mic: running input: \(p.bundleID ?? "?") (pid \(p.pid))\(note)")
+                }
+                print("mic: in use = \(MicrophoneMonitor.anyRunningInput(processes, ownPID: getpid()))")
+            } else {
+                print("mic: process API unavailable (needs macOS 14.2); auto-mute is unsupported here")
+            }
+            return
+        }
+
+        if let seconds = value(after: "--mic-watch", in: args).flatMap(Double.init) {
+            // Compares what the listeners deliver with what polling sees, to debug detection.
+            let monitor = MicrophoneMonitor()
+            let started = Date()
+            func stamp() -> String { String(format: "%6.1fs", Date().timeIntervalSince(started)) }
+            let subscription = monitor.$isInUse.sink { inUse in print("mic \(stamp()) listener says in use = \(inUse)") }
+            monitor.start()
+            var lastPolled: Bool?
+            Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
+                MainActor.assumeIsolated {
+                    guard let processes = MicrophoneMonitor.processes() else { return }
+                    let polled = MicrophoneMonitor.anyRunningInput(processes, ownPID: getpid())
+                    if polled != lastPolled {
+                        let names = processes.filter(\.isRunningInput).map { $0.bundleID ?? "?" }.joined(separator: ", ")
+                        print("mic \(stamp()) poll says in use = \(polled) [\(names)]")
+                        lastPolled = polled
+                    }
+                    fflush(stdout)
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
+                _ = subscription
+                print("mic \(stamp()) done; monitor.isInUse = \(monitor.isInUse)")
+                NSApp.terminate(nil)
             }
             return
         }
