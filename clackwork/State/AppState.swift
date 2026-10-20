@@ -100,11 +100,15 @@ final class AppState: ObservableObject {
     private var permissionPoll: Timer?
     private var activationObserver: NSObjectProtocol?
     private let defaults: UserDefaults
+    /// Whether macOS grants Input Monitoring right now. Injected so tests can flip it.
+    private let permissionCheck: () -> Bool
 
     /// Pass `engine: nil` for previews and tests that should stay silent.
-    init(defaults: UserDefaults = .standard, engine: SoundEngine? = SoundEngine()) {
+    init(defaults: UserDefaults = .standard, engine: SoundEngine? = SoundEngine(),
+         permissionCheck: @escaping () -> Bool = { KeyListener.hasAccess }) {
         self.defaults = defaults
         self.engine = engine
+        self.permissionCheck = permissionCheck
         isEnabled = defaults.object(forKey: Key.enabled) as? Bool ?? true
         let savedID = defaults.string(forKey: Key.profile)
         selectedProfile = KeyboardProfile.all.first { $0.id == savedID } ?? .defaultProfile
@@ -116,7 +120,7 @@ final class AppState: ObservableObject {
         showHUD = defaults.object(forKey: Key.showHUD) as? Bool ?? true
         stereoPositioning = defaults.object(forKey: Key.stereo) as? Bool ?? false
         autoMuteDuringCalls = defaults.object(forKey: Key.autoMute) as? Bool ?? false
-        hasInputMonitoringAccess = KeyListener.hasAccess
+        hasInputMonitoringAccess = permissionCheck()
 
         engine?.volume = Float(volume)
         applyDockIcon()
@@ -153,6 +157,11 @@ final class AppState: ObservableObject {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshPermissionStatus() }
         }
+    }
+
+    deinit {
+        permissionPoll?.invalidate()
+        if let activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
     }
 
     /// Plays the current profile's sound for a key, if sound is enabled and not muted.
@@ -205,7 +214,7 @@ final class AppState: ObservableObject {
 
     /// Re-reads the Input Monitoring permission and starts or stops the listener to match.
     func refreshPermissionStatus() {
-        let granted = KeyListener.hasAccess
+        let granted = permissionCheck()
         if granted != hasInputMonitoringAccess { hasInputMonitoringAccess = granted }
         updateListener()
     }
@@ -225,9 +234,8 @@ final class AppState: ObservableObject {
 
     // MARK: Listener lifecycle
 
-    /// The tap runs only while sound is enabled and permission is granted. While enabled but
-    /// waiting for permission, the status is polled so the app continues on its own once
-    /// access is granted (FR-22).
+    /// The tap runs only while sound is enabled and permission is granted. While sound is
+    /// enabled the permission is re-checked on a timer (see `permissionPollInterval`).
     private func updateListener() {
         if isEnabled && hasInputMonitoringAccess {
             if !listener.isRunning, !listener.start() {
@@ -238,17 +246,36 @@ final class AppState: ObservableObject {
             listener.stop()
         }
         isListening = listener.isRunning
-
-        let shouldPoll = isEnabled && !hasInputMonitoringAccess
-        if shouldPoll, permissionPoll == nil {
-            permissionPoll = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-                MainActor.assumeIsolated { self?.refreshPermissionStatus() }
-            }
-        } else if !shouldPoll {
-            permissionPoll?.invalidate()
-            permissionPoll = nil
-        }
+        schedulePermissionPoll()
     }
+
+    /// How often to re-check Input Monitoring, or nil when there is no need.
+    ///
+    /// Waiting for permission, the check is quick so the app picks up a grant right after
+    /// the user flips the switch (FR-22). While listening it is slower, enough to notice a
+    /// revoke in System Settings and stop the tap without a relaunch (issue #41); the
+    /// check is a single call, so this costs nothing noticeable.
+    static func permissionPollInterval(isEnabled: Bool, hasAccess: Bool) -> TimeInterval? {
+        guard isEnabled else { return nil }
+        return hasAccess ? 5 : 2
+    }
+
+    private func schedulePermissionPoll() {
+        let interval = Self.permissionPollInterval(isEnabled: isEnabled, hasAccess: hasInputMonitoringAccess)
+        guard interval != permissionPoll?.timeInterval else { return }
+        permissionPoll?.invalidate()
+        permissionPoll = nil
+        guard let interval else { return }
+        let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshPermissionStatus() }
+        }
+        // Lets the system batch this wake-up with others; exact timing doesn't matter here.
+        timer.tolerance = interval * 0.2
+        permissionPoll = timer
+    }
+
+    /// The interval of the running permission check, for tests.
+    var permissionPollInterval: TimeInterval? { permissionPoll?.timeInterval }
 
     private func applyLaunchAtLogin() {
         let current = SMAppService.mainApp.status == .enabled
