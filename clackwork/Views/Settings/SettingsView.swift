@@ -19,9 +19,6 @@ struct SettingsView: View {
             }
 
             Section("Sound") {
-                SettingRow("Stereo positioning", help: "Keys on the left sound slightly left, keys on the right slightly right.") {
-                    Toggle("Stereo positioning", isOn: $appState.stereoPositioning)
-                }
                 SettingRow("Auto-mute during calls", help: "Stay silent while the microphone is in use.") {
                     Toggle("Auto-mute during calls", isOn: $appState.autoMuteDuringCalls)
                 }

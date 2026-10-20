@@ -11,7 +11,6 @@ final class AppState: ObservableObject {
         static let volume = "volume"
         static let showDockIcon = "showDockIcon"
         static let showHUD = "showHUD"
-        static let stereo = "stereoPositioning"
         static let autoMute = "autoMuteDuringCalls"
     }
 
@@ -64,10 +63,6 @@ final class AppState: ObservableObject {
 
     // MARK: Sound settings (stored now, used by the engine in a later step)
 
-    @Published var stereoPositioning: Bool {
-        didSet { defaults.set(stereoPositioning, forKey: Key.stereo) }
-    }
-
     @Published var autoMuteDuringCalls: Bool {
         didSet { defaults.set(autoMuteDuringCalls, forKey: Key.autoMute) }
     }
@@ -118,7 +113,6 @@ final class AppState: ObservableObject {
         // Off by default: the menu bar item is how Clackwork is reached.
         showDockIcon = defaults.object(forKey: Key.showDockIcon) as? Bool ?? false
         showHUD = defaults.object(forKey: Key.showHUD) as? Bool ?? true
-        stereoPositioning = defaults.object(forKey: Key.stereo) as? Bool ?? false
         autoMuteDuringCalls = defaults.object(forKey: Key.autoMute) as? Bool ?? false
         hasInputMonitoringAccess = permissionCheck()
 
