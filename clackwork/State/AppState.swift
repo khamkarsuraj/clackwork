@@ -140,6 +140,11 @@ final class AppState: ObservableObject {
             }
         )
         updateListener()
+        StartupProbe.mark(
+            isListening ? "listener on"
+                : !isEnabled ? "listener off (sound is turned off)"
+                : "listener waiting for Input Monitoring"
+        )
 
         // Permission can be granted or revoked in System Settings while the app runs;
         // re-check whenever the user comes back to the app.

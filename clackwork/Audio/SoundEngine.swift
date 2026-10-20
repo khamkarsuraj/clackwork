@@ -108,6 +108,7 @@ nonisolated final class SoundEngine: @unchecked Sendable {
         engine.mainMixerNode.outputVolume = volume
         preloadAllSounds()
         start()
+        StartupProbe.mark("sounds ready (\(loadedProfileIDs.count) packs, engine \(engine.isRunning ? "running" : "not running"))")
 
         // Recover after output device changes or sleep/wake (reliability requirement).
         observer = NotificationCenter.default.addObserver(

@@ -98,6 +98,22 @@ log stream --predicate 'subsystem == "com.surajkhamkar.clackwork" && category ==
 
 For the typing number, type fast and steadily for at least 15 seconds in another app. Check idle both with the main window open and with it closed.
 
+## Measuring startup
+
+The first key press must play within 1 second of launch, with every profile loaded (PRD NFR, issue #36). Measure a Release build; a Debug build loads the packs unoptimized and takes several times longer.
+
+Add the launch argument `-measureStartup YES`, or run the binary from Terminal:
+
+```
+clackwork.app/Contents/MacOS/clackwork -measureStartup YES
+```
+
+Each milestone prints the time since the kernel started the process, so dyld and framework loading count too: `sounds ready` (every pack decoded and pitch-rendered, engine running), `listener on` (the key tap is up, or why it isn't) and `menu bar icon up` (drawn on the first pass of the run loop). On an Apple silicon MacBook a Release build reports sounds ready at 400–600 ms and the listener on about 50 ms later, so the first key can play with every pack loaded well inside the budget. The milestones also go to the unified log:
+
+```
+log stream --predicate 'subsystem == "com.surajkhamkar.clackwork" && category == "startup"'
+```
+
 ## Project layout
 
 ```
