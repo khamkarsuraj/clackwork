@@ -6,8 +6,12 @@ import Foundation
 /// Whether any app is capturing from a microphone, for auto-mute during calls (FR-15).
 ///
 /// Asks CoreAudio which processes are running audio input. Nothing is captured and no
-/// microphone permission is involved: only the HAL's own bookkeeping is read. Property
-/// listeners keep the answer current as calls start and end, so there is no polling.
+/// microphone permission is involved: only the HAL's own bookkeeping is read.
+///
+/// The answer is re-read every second while watching. Property listeners are registered
+/// too, but in practice CoreAudio does not deliver changes of a process's input state to
+/// them (observed on macOS 26: a call starting after launch never fired one), so the poll
+/// is what makes a call noticed. A read is a handful of cheap HAL property queries.
 ///
 /// Needs the per-process properties of macOS 14.2 and later (`isSupported`). The older
 /// device-level signal can't tell a call from Clackwork's own output on a headset, or from
@@ -19,9 +23,13 @@ final class MicrophoneMonitor: ObservableObject {
     /// Whether this macOS can say which processes capture audio (14.2 and later).
     nonisolated static let isSupported: Bool = processes() != nil
 
+    /// How often the HAL is re-read while watching.
+    static let pollInterval: TimeInterval = 1
+
     /// False for tests: never asks the HAL, so results don't depend on the machine.
     private let isLive: Bool
     private var isListening = false
+    private var poll: Timer?
     /// Objects with a property listener on them right now.
     private var watched: Set<Watched> = []
 
@@ -39,6 +47,7 @@ final class MicrophoneMonitor: ObservableObject {
     }
 
     deinit {
+        poll?.invalidate()
         for item in watched { Self.removeListener(item, from: self) }
     }
 
@@ -47,15 +56,26 @@ final class MicrophoneMonitor: ObservableObject {
         guard !isListening else { return }
         isListening = true
         refresh()
+        guard isLive else { return }
+        let timer = Timer.scheduledTimer(withTimeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refresh() }
+        }
+        timer.tolerance = Self.pollInterval * 0.2
+        poll = timer
     }
 
     func stop() {
         guard isListening else { return }
         isListening = false
+        poll?.invalidate()
+        poll = nil
         for item in watched { Self.removeListener(item, from: self) }
         watched.removeAll()
         set(false)
     }
+
+    /// Whether the periodic read is running, for tests.
+    var isPolling: Bool { poll != nil }
 
     /// For tests on a non-live monitor: stands in for a call starting or ending.
     func simulate(inUse: Bool) {

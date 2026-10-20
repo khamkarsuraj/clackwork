@@ -64,7 +64,7 @@ struct PopoverView: View {
         } else if appState.isEnabled, appState.isMuted {
             statusText("Muted until you unmute", muted: true)
         } else if appState.isEnabled, appState.isAutoMuted {
-            statusText("Muted while the microphone is in use", muted: true)
+            statusText("Muted · microphone in use", muted: true)
         } else if appState.isEnabled, !appState.hasInputMonitoringAccess {
             statusText("Waiting for Input Monitoring", muted: false)
         } else if appState.isEnabled {

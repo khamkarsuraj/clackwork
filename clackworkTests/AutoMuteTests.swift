@@ -117,11 +117,25 @@ struct AutoMuteTests {
 
     @Test func liveMonitorAnswersWithoutCrashingOnThisMachine() {
         // The HAL may report nothing at all on a CI runner; the point is that asking is safe
-        // and that stopping always ends with "not in use".
+        // and that stopping always ends with "not in use" and no timer left running.
         let monitor = MicrophoneMonitor()
         monitor.start()
+        #expect(monitor.isPolling, "CoreAudio doesn't notify input changes; the poll is what notices a call")
         monitor.refresh()
         monitor.stop()
         #expect(!monitor.isInUse)
+        #expect(!monitor.isPolling)
+    }
+
+    @Test func settingControlsThePoll() {
+        defer { UserDefaults().removePersistentDomain(forName: suiteName) }
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.set(false, forKey: "autoMuteDuringCalls")
+        let state = AppState(defaults: defaults, engine: nil)
+        #expect(!state.microphone.isPolling, "nothing is read while the setting is off")
+        state.autoMuteDuringCalls = true
+        #expect(state.microphone.isPolling)
+        state.autoMuteDuringCalls = false
+        #expect(!state.microphone.isPolling)
     }
 }
