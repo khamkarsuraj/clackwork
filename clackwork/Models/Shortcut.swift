@@ -13,10 +13,10 @@ struct KeyCombo: Codable, Hashable {
 
     var modifierFlags: NSEvent.ModifierFlags { NSEvent.ModifierFlags(rawValue: modifiers) }
 
-    /// "⌃ ⌥ K" style text, in Apple's modifier order.
+    /// "⌃ ⌥ O" style text, in Apple's modifier order.
     var display: String { parts.joined(separator: " ") }
 
-    /// "⌃⌥K" style text, for running prose such as the HUD's "⌃⌥K to turn on".
+    /// "⌃⌥O" style text, for running prose such as the HUD's "⌃⌥O to turn on".
     var compactDisplay: String { parts.joined() }
 
     private var parts: [String] {
@@ -72,6 +72,8 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
     case previousKeyboard
     case volumeUp
     case volumeDown
+    /// Brings Clackwork forward with the cheat sheet of these shortcuts (issue #31).
+    case showShortcuts
 
     var id: String { rawValue }
 
@@ -83,18 +85,29 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         case .previousKeyboard: "Previous keyboard"
         case .volumeUp: "Volume up"
         case .volumeDown: "Volume down"
+        case .showShortcuts: "Show keyboard shortcuts"
         }
     }
 
     /// Defaults avoid common app shortcuts such as ⌘⇧S.
     var defaultCombo: KeyCombo {
         switch self {
-        case .toggleSound: KeyCombo(keyCode: UInt16(kVK_ANSI_K), modifiers: [.control, .option])
+        case .toggleSound: KeyCombo(keyCode: UInt16(kVK_ANSI_O), modifiers: [.control, .option])
         case .toggleMute: KeyCombo(keyCode: UInt16(kVK_ANSI_M), modifiers: [.control, .option])
         case .nextKeyboard: KeyCombo(keyCode: UInt16(kVK_RightArrow), modifiers: [.control, .option])
         case .previousKeyboard: KeyCombo(keyCode: UInt16(kVK_LeftArrow), modifiers: [.control, .option])
         case .volumeUp: KeyCombo(keyCode: UInt16(kVK_UpArrow), modifiers: [.control, .option])
         case .volumeDown: KeyCombo(keyCode: UInt16(kVK_DownArrow), modifiers: [.control, .option])
+        case .showShortcuts: KeyCombo(keyCode: UInt16(kVK_ANSI_S), modifiers: [.control, .option])
+        }
+    }
+
+    /// Earlier defaults. A stored copy of one of these means "the default at the time",
+    /// not a choice, so the store reads it as the current default.
+    var retiredDefaults: [KeyCombo] {
+        switch self {
+        case .toggleSound: [KeyCombo(keyCode: UInt16(kVK_ANSI_K), modifiers: [.control, .option])]
+        default: []
         }
     }
 }

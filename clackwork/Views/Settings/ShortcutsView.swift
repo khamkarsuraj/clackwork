@@ -56,21 +56,11 @@ struct ShortcutRecorderButton: View {
 
     var body: some View {
         Button(action: start) {
-            Text(isRecording ? "Press new shortcut…" : (combo?.display ?? "Not set"))
-                .font(.caption.weight(isRecording ? .medium : .regular))
-                .tracking(isRecording || combo == nil ? 0 : 1)
-                .monospacedDigit()
-                .frame(width: 150, height: 26)
-                .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(isRecording ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.05))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .strokeBorder(isRecording ? Color.accentColor : Color.primary.opacity(0.16),
-                                      lineWidth: isRecording ? 2 : 0.5)
-                )
-                .foregroundStyle(isRecording ? Color.accentColor : (combo == nil ? Color.secondary : .primary))
+            KeyCap(
+                text: isRecording ? "Press new shortcut…" : (combo?.display ?? "Not set"),
+                style: isRecording ? .recording : (combo == nil ? .unset : .set),
+                width: 150
+            )
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Change shortcut")

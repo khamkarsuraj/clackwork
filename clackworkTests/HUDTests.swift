@@ -27,9 +27,9 @@ struct HUDContentTests {
 
     @Test func soundToggleShowsTheStateAndHowToUndoIt() {
         #expect(content(.toggleSound, isEnabled: false).title == "Sound off")
-        #expect(content(.toggleSound, isEnabled: false).detail == "⌃⌥K to turn on")
+        #expect(content(.toggleSound, isEnabled: false).detail == "⌃⌥O to turn on")
         #expect(content(.toggleSound, isEnabled: true).title == "Sound on")
-        #expect(content(.toggleSound, isEnabled: true).detail == "⌃⌥K to turn off")
+        #expect(content(.toggleSound, isEnabled: true).detail == "⌃⌥O to turn off")
     }
 
     @Test func hintUsesTheCustomizedShortcut() {
