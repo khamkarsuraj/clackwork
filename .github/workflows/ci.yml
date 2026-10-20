@@ -15,7 +15,9 @@ permissions:
 
 jobs:
   build-and-test:
-    runs-on: macos-26
+    # macos-15 rather than macos-26: the macOS 26 pool is small and runs sat queued for
+    # 10+ minutes, while macos-15 picks up in seconds and also ships Xcode 26 (26.3).
+    runs-on: macos-15
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
