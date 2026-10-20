@@ -41,6 +41,8 @@ final class MenuBarController: NSObject {
         }
         .environmentObject(appState)
         popover.contentViewController = NSHostingController(rootView: content)
+        // The status item is drawn on the next pass of the run loop, not in this initializer.
+        DispatchQueue.main.async { StartupProbe.mark("menu bar icon up") }
     }
 
     @objc func togglePopover() {
