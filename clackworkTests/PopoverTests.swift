@@ -35,7 +35,7 @@ struct PopoverTests {
         state.mute(for: 0.1)
         #expect(state.isMuted)
         // The main run loop keeps running while this test is suspended, so the timer fires.
-        try await Task.sleep(nanoseconds: 500_000_000)
+        try await waitUntil { !state.isMuted }
         #expect(!state.isMuted)
         #expect(state.muteEndsAt == nil)
         #expect(state.muteDuration == nil)

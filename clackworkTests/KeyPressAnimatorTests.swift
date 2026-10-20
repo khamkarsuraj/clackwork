@@ -55,7 +55,8 @@ struct KeyPressAnimatorTests {
         let animator = KeyPressAnimator(isAppVisible: { true })
         animator.press(.space, reduceMotion: false)
         #expect(animator.pressedKeys == [.space])
-        try await Task.sleep(nanoseconds: 400_000_000)
+        // The release is scheduled 140 ms out; wait for it rather than racing it with a sleep.
+        try await waitUntil { animator.pressedKeys.isEmpty }
         #expect(animator.pressedKeys.isEmpty)
     }
 
@@ -79,7 +80,7 @@ struct KeyPressAnimatorTests {
 
         visible = false
         NotificationCenter.default.post(name: NSApplication.didChangeOcclusionStateNotification, object: nil)
-        try await Task.sleep(nanoseconds: 100_000_000)
+        try await waitUntil { animator.pressedKeys.isEmpty }
         #expect(animator.pressedKeys.isEmpty)
     }
 }
