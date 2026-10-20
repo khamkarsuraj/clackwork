@@ -80,38 +80,42 @@ struct HUDControllerTests {
         #expect(HUDController.displayDuration == 1.2)
     }
 
-    @Test func showsThenHidesByItself() {
+    // These suspend with `await` rather than spinning the main run loop: a nested
+    // RunLoop.run services timers but blocks every other main-actor task, including the
+    // scheduled work of whichever test is suspended at the time (see TestSupport).
+
+    @Test func showsThenHidesByItself() async throws {
         let hud = HUDController(reduceMotion: { true })
         #expect(!hud.isVisible)
         hud.show(muted)
         #expect(hud.isVisible)
         #expect(hud.content == muted)
 
-        RunLoop.main.run(until: Date().addingTimeInterval(HUDController.displayDuration + 0.3))
+        try await waitUntil { !hud.isVisible }
         #expect(!hud.isVisible)
         #expect(hud.content == nil)
     }
 
-    @Test func anotherShortcutUpdatesItInPlaceAndRestartsTheTimer() {
+    @Test func anotherShortcutUpdatesItInPlaceAndRestartsTheTimer() async throws {
         let hud = HUDController(reduceMotion: { true })
         hud.show(muted)
-        RunLoop.main.run(until: Date().addingTimeInterval(0.8))
+        try await Task.sleep(for: .seconds(0.8))
         hud.show(volume)
         #expect(hud.content == volume)
         // 0.8 + 0.6 is past the first timer; the second keeps it up.
-        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+        try await Task.sleep(for: .seconds(0.6))
         #expect(hud.isVisible)
-        RunLoop.main.run(until: Date().addingTimeInterval(0.9))
+        try await waitUntil { !hud.isVisible }
         #expect(!hud.isVisible)
         hud.hide()
     }
 
-    @Test func hidingWithoutReduceMotionFadesOutThenHides() {
+    @Test func hidingWithoutReduceMotionFadesOutThenHides() async throws {
         let hud = HUDController(reduceMotion: { false })
         hud.show(muted)
         hud.hide()
         #expect(hud.isVisible) // still fading
-        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+        try await waitUntil { !hud.isVisible }
         #expect(!hud.isVisible)
     }
 
