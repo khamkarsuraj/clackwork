@@ -71,6 +71,17 @@ final class AppState: ObservableObject {
         }
     }
 
+    // MARK: Per-app exclusions (FR-16)
+
+    /// The excluded app that is in front right now, or nil. Sound pauses while it is set.
+    @Published private(set) var excludedAppInFront: ExcludedApp? {
+        didSet { gate.update(isExcludedAppInFront: excludedAppInFront != nil) }
+    }
+    let exclusions: ExclusionStore
+    /// The frontmost app's bundle ID. Injected so tests can stand in for app switches.
+    private let frontmostBundleID: () -> String?
+    private var appSwitchObserver: NSObjectProtocol?
+
     // MARK: Auto-mute (FR-15)
 
     /// Muted by the app itself because the microphone is in use. Separate from `isMuted`,
@@ -117,11 +128,16 @@ final class AppState: ObservableObject {
     /// `microphone: MicrophoneMonitor(live: false)` for tests that must not read the HAL.
     init(defaults: UserDefaults = .standard, engine: SoundEngine? = SoundEngine(),
          permissionCheck: @escaping () -> Bool = { KeyListener.hasAccess },
-         microphone: MicrophoneMonitor = MicrophoneMonitor()) {
+         microphone: MicrophoneMonitor = MicrophoneMonitor(),
+         exclusions: ExclusionStore? = nil,
+         frontmostBundleID: @escaping () -> String? = { NSWorkspace.shared.frontmostApplication?.bundleIdentifier }) {
         self.defaults = defaults
         self.engine = engine
         self.permissionCheck = permissionCheck
         self.microphone = microphone
+        // Same defaults as the rest of the state, so a test suite never sees the real list.
+        self.exclusions = exclusions ?? ExclusionStore(defaults: defaults)
+        self.frontmostBundleID = frontmostBundleID
         isEnabled = defaults.object(forKey: Key.enabled) as? Bool ?? true
         let savedID = defaults.string(forKey: Key.profile)
         selectedProfile = KeyboardProfile.all.first { $0.id == savedID } ?? .defaultProfile
@@ -145,6 +161,24 @@ final class AppState: ObservableObject {
             .sink { [weak self] inUse in self?.updateAutoMute(microphoneInUse: inUse) }
             .store(in: &subscriptions)
         applyAutoMuteSetting()
+
+        // Which app is in front: told by the system on every switch, and re-checked when
+        // the list changes so adding the current app takes effect at once.
+        appSwitchObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] notification in
+            let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            MainActor.assumeIsolated { self?.frontmostAppChanged(bundleID: app?.bundleIdentifier) }
+        }
+        // @Published emits before the property is written, so match against the emitted list.
+        self.exclusions.$apps
+            .dropFirst()
+            .sink { [weak self] apps in
+                guard let self else { return }
+                self.updateExcludedApp(bundleID: self.frontmostBundleID(), in: apps)
+            }
+            .store(in: &subscriptions)
+        frontmostAppChanged(bundleID: frontmostBundleID())
 
         // Sound is played on the listener thread; only the UI update hops to the main thread.
         let gate = gate
@@ -181,12 +215,28 @@ final class AppState: ObservableObject {
     deinit {
         permissionPoll?.invalidate()
         if let activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
+        if let appSwitchObserver { NSWorkspace.shared.notificationCenter.removeObserver(appSwitchObserver) }
     }
 
     /// Plays the current profile's sound for a key, if sound is enabled and not muted.
     func play(_ key: KeyType) {
-        guard isEnabled, !isMuted, !isAutoMuted else { return }
+        guard isEnabled, !isMuted, !isAutoMuted, excludedAppInFront == nil else { return }
         engine?.play(key, profile: selectedProfile)
+    }
+
+    // MARK: Per-app exclusions
+
+    /// Called on every app switch; tests call it to stand in for one. Clackwork coming to
+    /// the front (the popover opening, the window being used) doesn't count: the user is
+    /// still "in" the app they came from, and the popover must keep showing why it's paused.
+    func frontmostAppChanged(bundleID: String?) {
+        guard bundleID != Bundle.main.bundleIdentifier else { return }
+        updateExcludedApp(bundleID: bundleID, in: exclusions.apps)
+    }
+
+    private func updateExcludedApp(bundleID: String?, in apps: [ExcludedApp]) {
+        let next = bundleID.flatMap { id in apps.first { $0.bundleID == id } }
+        if next != excludedAppInFront { excludedAppInFront = next }
     }
 
     // MARK: Auto-mute

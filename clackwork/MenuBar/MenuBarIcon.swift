@@ -5,17 +5,31 @@ import AppKit
 enum MenuBarIcon {
     enum State: Equatable {
         case on, muted, off
+        /// Paused for an excluded app in front: drawn like muted, described differently.
+        case paused
 
         /// Off wins over muted: a muted app that is turned off shows as off. Muted by the
-        /// user or automatically (microphone in use) looks the same: no sound is coming.
-        init(isEnabled: Bool, isMuted: Bool, isAutoMuted: Bool = false) {
-            self = !isEnabled ? .off : (isMuted || isAutoMuted ? .muted : .on)
+        /// user or automatically (microphone in use) wins over paused for an app.
+        init(isEnabled: Bool, isMuted: Bool, isAutoMuted: Bool = false, isPausedForApp: Bool = false) {
+            if !isEnabled {
+                self = .off
+            } else if isMuted || isAutoMuted {
+                self = .muted
+            } else if isPausedForApp {
+                self = .paused
+            } else {
+                self = .on
+            }
         }
+
+        /// No sound is coming in either state; the glyph is the same.
+        var showsSlash: Bool { self == .muted || self == .paused }
 
         var accessibilityDescription: String {
             switch self {
             case .on: "Clackwork"
             case .muted: "Clackwork, muted"
+            case .paused: "Clackwork, paused for the app in front"
             case .off: "Clackwork, sound off"
             }
         }
@@ -28,7 +42,7 @@ enum MenuBarIcon {
             c.setAlpha(state == .off ? 0.4 : 1)
             c.beginTransparencyLayer(auxiliaryInfo: nil)
             drawSwitch(in: c)
-            if state == .muted { drawSlash(in: c) }
+            if state.showsSlash { drawSlash(in: c) }
             c.endTransparencyLayer()
             return true
         }

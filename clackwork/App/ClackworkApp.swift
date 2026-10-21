@@ -11,6 +11,7 @@ struct ClackworkApp: App {
             MainWindowView()
                 .environmentObject(container.appState)
                 .environmentObject(container.shortcuts)
+                .environmentObject(container.exclusions)
                 .environmentObject(container.router)
                 .frame(minWidth: 720, minHeight: 480)
         }

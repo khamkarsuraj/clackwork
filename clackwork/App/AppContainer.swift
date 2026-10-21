@@ -5,13 +5,15 @@ import Foundation
 final class AppContainer: ObservableObject {
     let appState: AppState
     let shortcuts: ShortcutStore
+    let exclusions: ExclusionStore
     let hud: HUDController
     let hotKeys: HotKeyCenter
     let router: WindowRouter
     let menuBar: MenuBarController
 
     init() {
-        appState = AppState()
+        exclusions = ExclusionStore()
+        appState = AppState(exclusions: exclusions)
         shortcuts = ShortcutStore()
         hud = HUDController()
         router = WindowRouter()
