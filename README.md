@@ -17,7 +17,7 @@ Early v1.0 development.
 | Onboarding, HUD overlay                                                   | Not started                                |
 | In-house or confirmed-license recordings                                  | Not started                                |
 | Auto-mute while the microphone is in use                                  | Done                                       |
-| Per-app exclusions                                                        | Setting stored, behavior not built         |
+| Per-app exclusions                                                        | Done                                       |
 
 ## Build and run
 

@@ -10,22 +10,29 @@ nonisolated final class PlaybackGate: Sendable {
         var isMuted = false
         /// Muted on the app's own initiative while the microphone is in use (FR-15).
         var isAutoMuted = false
+        /// Paused because an app on the exclusion list is in front (FR-16).
+        var isExcludedAppInFront = false
         var profileID = ""
     }
 
     private let state = OSAllocatedUnfairLock(initialState: State())
 
-    func update(isEnabled: Bool? = nil, isMuted: Bool? = nil, isAutoMuted: Bool? = nil, profileID: String? = nil) {
+    func update(isEnabled: Bool? = nil, isMuted: Bool? = nil, isAutoMuted: Bool? = nil,
+                isExcludedAppInFront: Bool? = nil, profileID: String? = nil) {
         state.withLock {
             if let isEnabled { $0.isEnabled = isEnabled }
             if let isMuted { $0.isMuted = isMuted }
             if let isAutoMuted { $0.isAutoMuted = isAutoMuted }
+            if let isExcludedAppInFront { $0.isExcludedAppInFront = isExcludedAppInFront }
             if let profileID { $0.profileID = profileID }
         }
     }
 
-    /// The profile to play, or nil when sound is off or muted, by the user or automatically.
+    /// The profile to play, or nil when sound is off, muted (by the user or automatically),
+    /// or paused for the app in front.
     var profileToPlay: String? {
-        state.withLock { $0.isEnabled && !$0.isMuted && !$0.isAutoMuted ? $0.profileID : nil }
+        state.withLock {
+            $0.isEnabled && !$0.isMuted && !$0.isAutoMuted && !$0.isExcludedAppInFront ? $0.profileID : nil
+        }
     }
 }

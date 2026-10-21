@@ -14,9 +14,9 @@ struct MenuBarIconTests {
     }
 
     @Test func everyStateIsATemplateImageWithItsOwnDescription() {
-        let states: [MenuBarIcon.State] = [.on, .muted, .off]
+        let states: [MenuBarIcon.State] = [.on, .muted, .paused, .off]
         let images = states.map(MenuBarIcon.image(for:))
         #expect(images.allSatisfy { $0.isTemplate && $0.size == NSSize(width: 18, height: 18) })
-        #expect(Set(images.compactMap(\.accessibilityDescription)).count == 3)
+        #expect(Set(images.compactMap(\.accessibilityDescription)).count == states.count)
     }
 }

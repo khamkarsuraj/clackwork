@@ -8,11 +8,12 @@ import SwiftUI
 ///
 /// `--snapshot /path/out.png [--dark]` renders the main window's layer tree to a PNG and quits.
 /// `--render-canvas /path/out.png [--dark]` renders `KeyboardsView` alone via ImageRenderer and quits.
-/// `--render-popover /path/out.png [--dark] [--popover-state off|muted|timed|automuted] [--popover-profile mx-red]` renders the menu bar popover and quits.
+/// `--render-popover /path/out.png [--dark] [--popover-state off|muted|timed|automuted|paused] [--popover-profile mx-red]` renders the menu bar popover and quits.
 /// `--export-sounds /path/dir` writes every loaded sound as a WAV file and quits.
 /// `--section settings` opens the window on that sidebar section (with any of the above).
 /// `--dump-views 1` prints the window's AppKit view tree with frames and quits.
 /// `--stress-sounds 300` plays that many random keys 12 ms apart from two threads, then quits.
+/// `--render-settings /path/out.png [--dark]` renders the Settings section and quits; `--with-exclusions` renders the Exclusions section with sample apps instead.
 /// `--render-cheatsheet /path/out.png [--dark]` renders the shortcut cheat sheet and quits.
 /// `--render-hud /path/out.png [--dark] [--hud-action toggleMute|toggleSound|nextKeyboard|volumeUp]` renders the shortcut HUD and quits.
 /// `--mic-report 1` prints which processes CoreAudio reports as running audio input, and quits.
@@ -23,7 +24,7 @@ import SwiftUI
 /// All work without screen-recording permission. Every flag takes a value because AppKit
 /// pairs `-key value` arguments; a stray word would be opened as a document and no window shows.
 enum DebugSnapshot {
-    /// `--section keyboards|shortcuts|settings` opens the window on that sidebar section.
+    /// `--section keyboards|shortcuts|exclusions|settings` opens the window on that sidebar section.
     static var initialSection: SidebarSection? {
         value(after: "--section", in: CommandLine.arguments).flatMap { raw in
             SidebarSection.allCases.first { $0.rawValue.lowercased() == raw.lowercased() }
@@ -48,7 +49,9 @@ enum DebugSnapshot {
         if let path = value(after: "--render-popover", in: args) {
             let defaults = UserDefaults(suiteName: "debug-popover")!
             defaults.removePersistentDomain(forName: "debug-popover")
-            let state = AppState(defaults: defaults, engine: nil, microphone: MicrophoneMonitor(live: false))
+            let exclusions = ExclusionStore(defaults: defaults)
+            let state = AppState(defaults: defaults, engine: nil, microphone: MicrophoneMonitor(live: false),
+                                 exclusions: exclusions, frontmostBundleID: { nil })
             if let id = value(after: "--popover-profile", in: args),
                let profile = KeyboardProfile.all.first(where: { $0.id == id }) {
                 state.selectedProfile = profile
@@ -60,6 +63,9 @@ enum DebugSnapshot {
             case "automuted":
                 state.autoMuteDuringCalls = true
                 state.microphone.simulate(inUse: true)
+            case "paused":
+                exclusions.add(ExcludedApp(bundleID: "us.zoom.xos", name: "zoom.us"))
+                state.frontmostAppChanged(bundleID: "us.zoom.xos")
             default: break
             }
             let host = NSHostingView(rootView: PopoverView { _ in }.environmentObject(state))
@@ -107,6 +113,36 @@ enum DebugSnapshot {
                         }
                     }
                 }
+            }
+            return
+        }
+
+        if let path = value(after: "--render-settings", in: args) {
+            let defaults = UserDefaults(suiteName: "debug-settings")!
+            defaults.removePersistentDomain(forName: "debug-settings")
+            let exclusions = ExclusionStore(defaults: defaults)
+            let state = AppState(defaults: defaults, engine: nil, microphone: MicrophoneMonitor(live: false),
+                                 exclusions: exclusions, frontmostBundleID: { nil })
+            if args.contains("--with-exclusions") {
+                exclusions.add(ExcludedApp(bundleID: "us.zoom.xos", name: "zoom.us"))
+                exclusions.add(ExcludedApp(bundleID: "com.apple.Terminal", name: "Terminal"))
+                exclusions.add(ExcludedApp(bundleID: "com.google.Chrome", name: "Google Chrome"))
+            }
+            // A grouped Form is table-backed, which ImageRenderer skips; draw it in a window instead.
+            let page: AnyView = args.contains("--with-exclusions")
+                ? AnyView(ExclusionsView())
+                : AnyView(SettingsView())
+            let host = NSHostingView(rootView: page
+                .environmentObject(state)
+                .environmentObject(exclusions)
+                .frame(width: 700, height: 548))
+            host.frame.size = host.fittingSize
+            let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+            window.contentView = host
+            window.orderFrontRegardless()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                defer { NSApp.terminate(nil) }
+                render(host, in: window, to: path)
             }
             return
         }

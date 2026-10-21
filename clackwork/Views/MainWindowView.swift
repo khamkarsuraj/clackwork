@@ -4,6 +4,7 @@ import SwiftUI
 enum SidebarSection: String, CaseIterable, Identifiable {
     case keyboards = "Keyboards"
     case shortcuts = "Shortcuts"
+    case exclusions = "Exclusions"
     case settings = "Settings"
 
     /// The enum is its own ID so List selection matches the rows.
@@ -13,6 +14,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         switch self {
         case .keyboards: "keyboard"
         case .shortcuts: "command"
+        case .exclusions: "xmark.app"
         case .settings: "gearshape"
         }
     }
@@ -40,6 +42,7 @@ struct MainWindowView: View {
                 switch router.section ?? .keyboards {
                 case .keyboards: KeyboardsView()
                 case .shortcuts: ShortcutsView()
+                case .exclusions: ExclusionsView()
                 case .settings: SettingsView()
                 }
             }
@@ -76,7 +79,8 @@ private struct MasterToggle: View {
     /// Width of the widest status label, so the switch stays put when the status changes.
     private static let labelWidth: CGFloat = {
         let font = NSFont.preferredFont(forTextStyle: .caption1)
-        return ["Sound on", "Sound off", "Muted", "Muted · microphone in use"]
+        // The paused label carries an app name; a typical one sets the width, longer ones clip.
+        return ["Sound on", "Sound off", "Muted", "Muted · microphone in use", "Paused · Google Chrome in front"]
             .map { ($0 as NSString).size(withAttributes: [.font: font]).width.rounded(.up) }
             .max() ?? 0
     }()
@@ -86,6 +90,7 @@ private struct MasterToggle: View {
         guard appState.isEnabled else { return "Sound off" }
         if appState.isMuted { return "Muted" }
         if appState.isAutoMuted { return "Muted · microphone in use" }
+        if let app = appState.excludedAppInFront { return "Paused · \(app.name) in front" }
         return "Sound on"
     }
 
