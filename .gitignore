@@ -23,6 +23,7 @@ playground.xcworkspace
 # Documentation
 docs/
 assets/
+!clackwork/AppIcon.icon/Assets/
 clackwork/Sounds/
 
 # Test results
