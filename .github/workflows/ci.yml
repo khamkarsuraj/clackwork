@@ -29,6 +29,8 @@ jobs:
           xcodebuild -version
 
       # Sound packs aren't committed, so CI builds without them; no test depends on them.
+      # The app icon is left out too: compiling an Icon Composer .icon needs a macOS 26
+      # host ("Failed to generate flattened icon stack" on macos-15), and no test needs it.
       - name: Build and test
         run: |
           set -o pipefail
@@ -39,6 +41,8 @@ jobs:
             -enableCodeCoverage YES \
             -resultBundlePath TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
+            EXCLUDED_SOURCE_FILE_NAMES=AppIcon.icon \
+            ASSETCATALOG_COMPILER_APPICON_NAME= \
             | tee xcodebuild.log \
             | grep -E '^Test (case|suite)|error:|warning:|\*\* (TEST|BUILD)'
 
