@@ -60,6 +60,22 @@ nonisolated final class SoundEngine: @unchecked Sendable {
     /// Output device latency (hardware + safety offset), in seconds.
     var outputLatency: TimeInterval { engine.outputNode.presentationLatency }
 
+    /// The output device's name, such as "MacBook Pro Speakers", or nil if it can't be read.
+    var outputDeviceName: String? {
+        guard let unit = engine.outputNode.audioUnit else { return nil }
+        var device = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioUnitGetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
+                                   &device, &size) == noErr else { return nil }
+        var address = AudioObjectPropertyAddress(mSelector: kAudioObjectPropertyName,
+                                                 mScope: kAudioObjectPropertyScopeGlobal,
+                                                 mElement: kAudioObjectPropertyElementMain)
+        var name: Unmanaged<CFString>?
+        size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &name) == noErr else { return nil }
+        return name?.takeRetainedValue() as String?
+    }
+
     /// Worst case from scheduling a sound to it reaching the speaker: one full IO cycle of
     /// waiting plus the output latency. Cached, because it changes only with the device.
     var audioPathLatencyMs: Double { audioPathLatency.withLock { $0 } }

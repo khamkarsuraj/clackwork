@@ -19,5 +19,7 @@ final class AppContainer: ObservableObject {
         router = WindowRouter()
         hotKeys = HotKeyCenter(appState: appState, shortcuts: shortcuts, hud: hud, router: router)
         menuBar = MenuBarController(appState: appState, router: router)
+        // The engine loads every pack in its initializer, so the bench can start right away.
+        if LatencyBench.isEnabled { LatencyBench.start(engine: appState.engine) }
     }
 }

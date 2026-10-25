@@ -34,7 +34,7 @@ xcodebuild test -project clackwork.xcodeproj -scheme clackwork -destination 'pla
 
 Unit tests live in `clackworkTests/` and use Swift Testing. Each suite names the PRD requirement or issue it covers. They need no sound packs, audio device or Input Monitoring permission. The keyboard animation test briefly opens a small borderless window.
 
-CI runs the same tests on every pull request and on every push to `main` (`.github/workflows/ci.yml`). Mark `build-and-test` as a required check in the branch settings so a pull request can't merge until it passes. CPU, memory and latency targets are still measured by hand; see the sections below.
+CI runs the same tests on every pull request and on every push to `main` (`.github/workflows/ci.yml`). Mark `build-and-test` as a required check in the branch settings so a pull request can't merge until it passes. CPU, memory and latency targets are measured locally, since they need the sound packs and real audio hardware; see the sections below.
 
 ## Permissions
 
@@ -69,7 +69,35 @@ Key press to sound latency must stay under 20 ms (PRD NFR, issue #32). It has fo
 | Render wait | Scheduled to the next audio cycle, at most one IO buffer | From the device's buffer size |
 | Output | Audio cycle to the speaker | From the device's reported latency |
 
-**Live measurement.** In Xcode, open Product > Scheme > Edit Scheme > Run > Arguments and add `-measureLatency YES`. Run the app, grant Input Monitoring, and type at least 100 keys in any app. Every 100 key presses the Xcode console prints p50, p95 and max for each part and for the total. The probe records timestamps only, never which key was pressed.
+**Repeatable bench.** Use this to check a build and compare it with an earlier one. It needs no typing or permissions, only the sound packs in `clackwork/Sounds`, and it plays silently.
+
+1. Switch the Mac's sound output to the built-in speakers or wired headphones.
+2. From the project folder, run `scripts/latency_bench.sh`. It builds Release, then sends 1,000 simulated key presses 30 ms apart through the same path a real key takes after the event tap (the playback gate, then the sound engine on a user-interactive thread). It takes about a minute.
+3. Read the summary:
+
+   ```
+   output: MacBook Pro Speakers, audio path 6.8 ms (512 frames at 96000 Hz)
+   handoff   p50  0.06  p95  0.11  max  0.18 ms
+   total     p50  6.85  p95  6.90  max  6.97 ms
+   Saved perf-results/latency-2b4a925-20261024-223006.json
+   ```
+
+   - **output** is the device measured and its audio path: one full IO buffer of render wait plus the device's output latency.
+   - **handoff** is Clackwork's own work per key. It should stay well under 1 ms.
+   - **total** is hand-off plus the audio path, roughly what you hear. **p95 must stay under 20 ms**; the target is 10 ms.
+   - p50 is the typical key, p95 the slowest 1 in 20, max the single slowest.
+   - A `FAIL:` line means total p95 is over 20 ms. If you also see `warning: … looks like Bluetooth`, the output device is the cause; switch outputs and run again.
+4. Keep the saved file as a baseline. After a change, run again with `--compare`:
+
+   ```
+   scripts/latency_bench.sh --compare perf-results/latency-2b4a925-20261024-223006.json
+   ```
+
+   It prints old and new side by side and ends with `PASS`, or `FAIL` and exits 1 if total p95 is over 20 ms or more than 1 ms worse than the baseline. `warning: different setup` means the runs used a different device, buffer size, Mac or profile, so the numbers aren't like for like.
+
+Reports go to `perf-results/`, which isn't committed since numbers depend on the Mac. Each report records the commit (with `-dirty` when tracked files had uncommitted changes), date, Mac, macOS, output device and buffer size. `--keys 300` makes a shorter run, `--profile mx-blue` measures another profile, and `--interval 50` types more slowly. Delivery from the hardware to the tap belongs to macOS and isn't included; the live measurement below covers it.
+
+**Live measurement.** In Xcode, open Product > Scheme > Edit Scheme > Run > Arguments and add `-measureLatency YES`. Run the app, grant Input Monitoring, and type at least 100 keys in any app. Every 100 key presses the Xcode console prints p50, p95 and max for each part and for the total, followed by the same numbers as a `latency-report:` JSON line. Save that JSON to a file to compare it with `scripts/latency_report.py compare old.json new.json`. The probe records timestamps only, never which key was pressed.
 
 **Audio path only.** No key presses needed:
 
@@ -121,7 +149,7 @@ log stream --predicate 'subsystem == "com.surajkhamkar.clackwork" && category ==
 ```
 clackwork/
 ├── App/          App entry, object container, debug tooling
-├── Diagnostics/  Latency and CPU probes
+├── Diagnostics/  Latency, CPU and startup probes, and the latency bench
 ├── Audio/        Sound engine and recorded pack loader
 ├── Listener/     System-wide key event tap
 ├── Models/       Profiles, key types, keyboard layout, shortcuts
