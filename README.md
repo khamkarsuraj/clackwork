@@ -139,11 +139,21 @@ Add the launch argument `-measureStartup YES`, or run the binary from Terminal:
 clackwork.app/Contents/MacOS/clackwork -measureStartup YES
 ```
 
-Each milestone prints the time since the kernel started the process, so dyld and framework loading count too: `sounds ready` (every pack decoded and pitch-rendered, engine running), `listener on` (the key tap is up, or why it isn't) and `menu bar icon up` (drawn on the first pass of the run loop). On an Apple silicon MacBook a Release build reports sounds ready at 400–600 ms and the listener on about 50 ms later, so the first key can play with every pack loaded well inside the budget. The milestones also go to the unified log:
+Each milestone prints the time since the kernel started the process, so dyld and framework loading count too: `sounds ready` (every pack decoded and pitch-rendered, engine running), `listener on` (the key tap is up, or why it isn't) and `menu bar icon up` (drawn on the first pass of the run loop). On an Apple silicon MacBook a Release build reports sounds ready at about 300 ms and the listener on about 50 ms later, so the first key can play with every pack loaded well inside the budget. The milestones also go to the unified log:
 
 ```
 log stream --predicate 'subsystem == "com.surajkhamkar.clackwork" && category == "startup"'
 ```
+
+## Measuring memory
+
+Memory must stay under 80 MB with every profile loaded (PRD NFR, issue #34). Measure a Release build with the main window open, after it has settled for a few seconds:
+
+```
+footprint -p $(pgrep -nx clackwork)
+```
+
+`Footprint` is the number that counts, the same one Activity Monitor shows as Memory. With the development packs an Apple silicon MacBook reads about 62 MB. The sounds themselves take about 13 MB (the `caulk::audio_buffer_resource` zone in `vmmap --summary`); packs are read slice by slice, so a longer recording doesn't cost memory, only more or longer slices do.
 
 ## Architecture
 
