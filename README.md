@@ -222,7 +222,7 @@ Config/           Build settings shared by both app targets, plus the App Store 
 
 Recorded packs live in `clackwork/Sounds/` as `<profile-id>.caf` and `<profile-id>.json`, one per profile: `cobalt-clack`, `walnut-bump`, `onyx-thock` and `ember-tap`. A profile without a pack is silent.
 
-Sound packs are not committed; each developer keeps them locally. A pack is a folder with one audio file and a `config.json` that maps key scan codes to `[start ms, duration ms]` slices of it. To add one, run:
+The packs are committed, so a fresh clone plays every profile; their source originals stay out of the repo. A pack is a folder with one audio file and a `config.json` that maps key scan codes to `[start ms, duration ms]` slices of it. To add or replace one, run:
 
 ```
 scripts/import_soundpack.sh <pack-folder> <profile-id>
