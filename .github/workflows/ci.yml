@@ -61,6 +61,31 @@ jobs:
             | tee -a xcodebuild.log \
             | grep -E 'error:|\*\* BUILD'
 
+      # PRD NFR, compatibility (#39): one universal app that runs on macOS 13 and later.
+      - name: Check the Release build is universal and targets macOS 13
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project clackwork.xcodeproj \
+            -scheme clackwork \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath build/universal \
+            CODE_SIGNING_ALLOWED=NO \
+            EXCLUDED_SOURCE_FILE_NAMES=AppIcon.icon \
+            ASSETCATALOG_COMPILER_APPICON_NAME= \
+            | tee -a xcodebuild.log \
+            | grep -E 'error:|\*\* BUILD'
+          binary=build/universal/Build/Products/Release/clackwork.app/Contents/MacOS/clackwork
+          archs=$(lipo -archs "$binary")
+          echo "Architectures: $archs"
+          [[ " $archs " == *" arm64 "* && " $archs " == *" x86_64 "* ]] || { echo "::error::Not universal: $archs"; exit 1; }
+          for arch in arm64 x86_64; do
+            minos=$(vtool -arch "$arch" -show-build "$binary" | awk '/minos/ {print $2}')
+            echo "$arch minos: $minos"
+            [[ "$minos" == "13.0" ]] || { echo "::error::$arch targets macOS $minos, not 13.0"; exit 1; }
+          done
+
       - name: Coverage summary
         if: success()
         run: xcrun xccov view --report --only-targets TestResults.xcresult
@@ -70,6 +95,45 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-results
+          path: |
+            TestResults.xcresult
+            xcodebuild.log
+          retention-days: 7
+
+  # The same tests on real Intel hardware (#39). Rosetta runs the Intel slice on Apple
+  # silicon, but it isn't an Intel Mac.
+  test-intel:
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select the newest stable Xcode 26
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26*.app | grep -viE 'beta|rc' | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
+      - name: Test
+        run: |
+          set -o pipefail
+          uname -m
+          xcodebuild test \
+            -project clackwork.xcodeproj \
+            -scheme clackwork \
+            -destination 'platform=macOS,arch=x86_64' \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            EXCLUDED_SOURCE_FILE_NAMES=AppIcon.icon \
+            ASSETCATALOG_COMPILER_APPICON_NAME= \
+            | tee xcodebuild.log \
+            | grep -E '^Test (case|suite)|error:|warning:|\*\* (TEST|BUILD)'
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-intel
           path: |
             TestResults.xcresult
             xcodebuild.log
