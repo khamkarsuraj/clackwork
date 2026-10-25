@@ -30,6 +30,18 @@ struct KeyCombo: Codable, Hashable {
         return parts
     }
 
+    /// "Control-Option-O", for VoiceOver, which reads the symbols as shapes.
+    var spokenDescription: String {
+        var parts: [String] = []
+        let flags = modifierFlags
+        if flags.contains(.control) { parts.append("Control") }
+        if flags.contains(.option) { parts.append("Option") }
+        if flags.contains(.shift) { parts.append("Shift") }
+        if flags.contains(.command) { parts.append("Command") }
+        parts.append(KeyCombo.spokenKeyName(for: keyCode))
+        return parts.joined(separator: "-")
+    }
+
     /// Global shortcuts must include at least one modifier so plain typing never triggers them.
     var hasModifier: Bool {
         !modifierFlags.intersection([.control, .option, .shift, .command]).isEmpty
@@ -40,6 +52,17 @@ struct KeyCombo: Codable, Hashable {
         if let letter = ansiKeys[Int(keyCode)] { return letter }
         return "Key \(keyCode)"
     }
+
+    /// The key's name as VoiceOver should say it: "Left Arrow" rather than "←".
+    static func spokenKeyName(for keyCode: UInt16) -> String {
+        spokenSpecialKeys[Int(keyCode)] ?? keyName(for: keyCode)
+    }
+
+    private static let spokenSpecialKeys: [Int: String] = [
+        kVK_LeftArrow: "Left Arrow", kVK_RightArrow: "Right Arrow", kVK_UpArrow: "Up Arrow", kVK_DownArrow: "Down Arrow",
+        kVK_Return: "Return", kVK_Tab: "Tab", kVK_Delete: "Delete", kVK_ForwardDelete: "Forward Delete",
+        kVK_Escape: "Escape", kVK_Home: "Home", kVK_End: "End", kVK_PageUp: "Page Up", kVK_PageDown: "Page Down",
+    ]
 
     private static let specialKeys: [Int: String] = [
         kVK_LeftArrow: "←", kVK_RightArrow: "→", kVK_UpArrow: "↑", kVK_DownArrow: "↓",

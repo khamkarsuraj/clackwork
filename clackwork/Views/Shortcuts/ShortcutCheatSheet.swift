@@ -7,17 +7,20 @@ struct ShortcutCheatSheet: View {
     @EnvironmentObject private var shortcuts: ShortcutStore
     @EnvironmentObject private var router: WindowRouter
 
-    /// One line of the sheet. `keys` is nil for an unassigned shortcut.
+    /// One line of the sheet. `keys` and `spokenKeys` are nil for an unassigned shortcut.
     struct Row: Identifiable, Equatable {
         let id: String
         let label: String
         let keys: String?
+        /// The combination as VoiceOver says it: "Control-Option-S".
+        let spokenKeys: String?
     }
 
     /// The shortcuts as the user has them set right now.
     static func rows(from store: ShortcutStore) -> [Row] {
         ShortcutAction.allCases.map { action in
-            Row(id: action.id, label: action.label, keys: store.combo(for: action)?.display)
+            let combo = store.combo(for: action)
+            return Row(id: action.id, label: action.label, keys: combo?.display, spokenKeys: combo?.spokenDescription)
         }
     }
 
@@ -43,7 +46,7 @@ struct ShortcutCheatSheet: View {
                     .padding(.vertical, 7)
                     .padding(.horizontal, 12)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(row.label), \(row.keys ?? "not set")")
+                    .accessibilityLabel("\(row.label), \(row.spokenKeys ?? "not set")")
                     if index < rows.count - 1 {
                         Divider().padding(.leading, 12)
                     }

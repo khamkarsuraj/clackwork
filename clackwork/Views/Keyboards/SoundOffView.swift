@@ -12,6 +12,7 @@ struct SoundOffView: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 64, height: 64)
                 .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .accessibilityHidden(true)
 
             Text("Sound is off")
                 .font(.headline)
@@ -31,6 +32,7 @@ struct SoundOffView: View {
                 Text("or press \(combo.display)")
                     .font(.caption2.monospaced())
                     .foregroundStyle(.secondary)
+                    .accessibilityLabel("or press \(combo.spokenDescription)")
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

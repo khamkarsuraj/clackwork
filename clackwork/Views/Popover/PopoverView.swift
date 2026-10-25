@@ -130,6 +130,7 @@ struct PopoverView: View {
                 .buttonStyle(RowButtonStyle())
                 .opacity(dimmed)
                 .accessibilityLabel(profile.name)
+                .accessibilityValue(profile.family)
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
@@ -166,6 +167,7 @@ struct PopoverView: View {
             .labelsHidden()
             .controlSize(.small)
             .foregroundStyle(.secondary)
+            .accessibilityValue("\(Int((appState.volume * 100).rounded())) percent")
         }
         .padding(EdgeInsets(top: 2, leading: 10, bottom: 6, trailing: 10))
         .opacity(dimmed)
@@ -196,6 +198,7 @@ struct PopoverView: View {
                 .frame(height: 30)
             }
             .buttonStyle(RowButtonStyle())
+            .accessibilityLabel(appState.isMuted ? "Unmute" : "Mute")
 
             Menu {
                 Section("Mute") {
@@ -242,6 +245,7 @@ struct PopoverView: View {
 }
 
 /// A full-width row with a soft grey hover, like the rows in the system's AirPods and Sound menus.
+/// A custom style draws no focus ring, so keyboard focus shows as the hover fill.
 private struct RowButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         Row(configuration: configuration)
@@ -251,6 +255,7 @@ private struct RowButtonStyle: ButtonStyle {
         let configuration: Configuration
         @State private var isHovered = false
         @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.isFocused) private var isFocused
 
         var body: some View {
             configuration.label
@@ -266,7 +271,7 @@ private struct RowButtonStyle: ButtonStyle {
 
         private var fillOpacity: Double {
             guard isEnabled else { return 0 }
-            return configuration.isPressed ? 0.12 : (isHovered ? 0.07 : 0)
+            return configuration.isPressed ? 0.12 : (isHovered || isFocused ? 0.07 : 0)
         }
     }
 }

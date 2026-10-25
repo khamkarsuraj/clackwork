@@ -138,6 +138,7 @@ struct KeyboardsView: View {
             }
             .labelsHidden()
             .foregroundStyle(.secondary)
+            .accessibilityValue("\(Int((appState.volume * 100).rounded())) percent")
         }
     }
 
@@ -148,6 +149,7 @@ struct KeyboardsView: View {
             TextField("Type here to hear this keyboard…", text: $typedText)
                 .textFieldStyle(.roundedBorder)
                 .controlSize(.large)
+                .accessibilityLabel("Try it")
                 .onChange(of: typedText) { newValue in
                     typed(newValue)
                 }
