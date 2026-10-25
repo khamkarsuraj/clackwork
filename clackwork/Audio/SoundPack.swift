@@ -33,8 +33,10 @@ nonisolated enum SoundPack {
                 NSLog("SoundPack: \(profileID) uses unsupported key_define_type \(config.keyDefineType)")
                 return nil
             }
-            let audio = try readMono(audioURL, sampleRate: sampleRate)
-            return slices(from: audio, config: config, sampleRate: sampleRate, maxVariations: maxVariations)
+            let file = try AVAudioFile(forReading: audioURL)
+            return try slices(config: config, sampleRate: sampleRate, maxVariations: maxVariations) { slice in
+                try readMono(slice, from: file, sampleRate: sampleRate)
+            }
         } catch {
             NSLog("SoundPack: could not load \(profileID): \(error)")
             return nil
@@ -58,14 +60,33 @@ nonisolated enum SoundPack {
 
     // MARK: Private
 
-    private static func readMono(_ url: URL, sampleRate: Double) throws -> [Float] {
-        let file = try AVAudioFile(forReading: url)
+    /// Reads one `[start ms, duration ms]` slice of the pack as mono at `sampleRate`.
+    ///
+    /// Only the slices in use are decoded. Decoding a whole pack (40-55 s) left a freed
+    /// 7-10 MB buffer per profile that malloc kept counted against the app (issue #34).
+    ///
+    /// The slice is resampled on the pack's own timeline, with the same interpolation as
+    /// `SoundEngine.resample`, so it comes out sample for sample as if cut from the whole
+    /// resampled pack. Resampling the slice on its own shifts the interpolation by a
+    /// fraction of a sample, which moved some silence trims by up to 30 ms.
+    private static func readMono(_ slice: [Double], from file: AVAudioFile, sampleRate: Double) throws -> [Float] {
         let format = file.processingFormat
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(file.length)) else {
-            return []
-        }
-        try file.read(into: buffer)
-        guard let channels = buffer.floatChannelData else { return [] }
+        let length = Int(file.length)
+        // Converting to the engine rate is a "pitch" change by the ratio of the two rates.
+        let pitch = format.sampleRate / sampleRate
+        let resampledLength = length > 1 ? Int(Double(length - 1) / pitch) + 1 : length
+        let first = Int(slice[0] / 1000 * sampleRate)
+        let end = min(resampledLength, first + Int(slice[1] / 1000 * sampleRate))
+        guard first >= 0, first < end else { return [] }
+
+        // The file frames those output samples interpolate between.
+        let readStart = Int(Double(first) * pitch)
+        let readEnd = min(length, Int(Double(end - 1) * pitch) + 2)
+        let count = AVAudioFrameCount(readEnd - readStart)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: count) else { return [] }
+        file.framePosition = AVAudioFramePosition(readStart)
+        try file.read(into: buffer, frameCount: count)
+        guard let channels = buffer.floatChannelData, buffer.frameLength == count else { return [] }
 
         let frames = Int(buffer.frameLength)
         let channelCount = Int(format.channelCount)
@@ -74,12 +95,21 @@ nonisolated enum SoundPack {
             let channel = channels[c]
             for i in 0..<frames { mono[i] += channel[i] / Float(channelCount) }
         }
-        // Resampling to the engine rate is a "pitch" change by the ratio of the two rates.
-        return SoundEngine.resample(mono, pitch: format.sampleRate / sampleRate)
+
+        var out = [Float](repeating: 0, count: end - first)
+        for i in first..<end {
+            let position = Double(i) * pitch
+            let index = Int(position)
+            let next = min(index + 1, length - 1)
+            let fraction = Float(position - Double(index))
+            let a = mono[index - readStart], b = mono[next - readStart]
+            out[i - first] = a + (b - a) * fraction
+        }
+        return out
     }
 
-    private static func slices(from audio: [Float], config: Config, sampleRate: Double,
-                               maxVariations: Int) -> [KeyType: [[Float]]] {
+    private static func slices(config: Config, sampleRate: Double, maxVariations: Int,
+                               read: ([Double]) throws -> [Float]) rethrows -> [KeyType: [[Float]]] {
         // Group distinct slices by key type; many keys share the same slice.
         var byType: [KeyType: [[Double]]] = [:]
         var seen = Set<Double>()
@@ -91,7 +121,7 @@ nonisolated enum SoundPack {
         var result: [KeyType: [[Float]]] = [:]
         for (type, all) in byType {
             let picked = evenlySpaced(all, count: maxVariations)
-            result[type] = picked.compactMap { cut(audio, slice: $0, sampleRate: sampleRate) }
+            result[type] = try picked.compactMap { shape(try read($0), sampleRate: sampleRate) }
         }
         // Packs without a dedicated sound for a type borrow the standard key.
         for type in KeyType.allCases where result[type]?.isEmpty ?? true {
@@ -112,11 +142,9 @@ nonisolated enum SoundPack {
         return (0..<count).map { items[$0 * items.count / count] }
     }
 
-    private static func cut(_ audio: [Float], slice: [Double], sampleRate: Double) -> [Float]? {
-        let start = Int(slice[0] / 1000 * sampleRate)
-        let end = min(audio.count, start + Int(slice[1] / 1000 * sampleRate))
-        guard start >= 0, start < end else { return nil }
-        var samples = Array(audio[start..<end])
+    private static func shape(_ slice: [Float], sampleRate: Double) -> [Float]? {
+        guard !slice.isEmpty else { return nil }
+        var samples = slice
 
         // Trim leading silence: start 1 ms before the first sample above 5% of the peak.
         let peak = samples.reduce(0) { max($0, abs($1)) }
