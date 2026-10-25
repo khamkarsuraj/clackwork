@@ -18,6 +18,15 @@ struct ClackworkApp: App {
         .defaultSize(width: 900, height: 600)
         .windowResizability(.contentMinSize)
         .commands {
+            // Keyboard access to the sidebar (⌘1 to ⌘4). Arrow keys stay off in the sidebar
+            // itself, so pressing them to hear sounds never switches sections.
+            CommandGroup(before: .sidebar) {
+                ForEach(Array(SidebarSection.allCases.enumerated()), id: \.element) { index, section in
+                    Button(section.rawValue) { container.router.showMainWindow(section: section) }
+                        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
+                }
+                Divider()
+            }
             CommandGroup(after: .help) {
                 // No key equivalent here: the global "Show keyboard shortcuts" hot key
                 // (⌃⌥S by default) already covers it, inside the app and out.

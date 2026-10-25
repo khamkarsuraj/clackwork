@@ -11,6 +11,7 @@ struct ShortcutsView: View {
                 ForEach(ShortcutAction.allCases) { action in
                     LabeledContent(action.label) {
                         ShortcutRecorderButton(
+                            label: action.label,
                             combo: shortcuts.combo(for: action),
                             isRecording: shortcuts.recording == action,
                             start: { shortcuts.recording = action },
@@ -47,6 +48,8 @@ struct ShortcutsView: View {
 
 /// Shows a shortcut as key caps; click to record a new one. Escape cancels.
 struct ShortcutRecorderButton: View {
+    /// The action this shortcut triggers, which VoiceOver reads as the button's name.
+    let label: String
     let combo: KeyCombo?
     let isRecording: Bool
     let start: () -> Void
@@ -63,8 +66,9 @@ struct ShortcutRecorderButton: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Change shortcut")
-        .accessibilityValue(combo?.display ?? "Not set")
+        .accessibilityLabel(label)
+        .accessibilityValue(isRecording ? "Press new shortcut" : (combo?.spokenDescription ?? "Not set"))
+        .accessibilityHint("Records a new key combination. Escape cancels.")
         .onChange(of: isRecording) { recording in
             recording ? installMonitor() : removeMonitor()
         }

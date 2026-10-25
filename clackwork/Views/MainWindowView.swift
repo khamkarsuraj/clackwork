@@ -54,7 +54,8 @@ struct MainWindowView: View {
                     .typeSelectEquivalent("")
             }
             .listStyle(.sidebar)
-            // Sections switch by mouse only; arrow keys are swallowed here.
+            // Arrow keys are swallowed here, so pressing them to hear sounds never switches
+            // sections; ⌘1 to ⌘4 in the View menu switch them from the keyboard.
             .onMoveCommand { _ in }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
         } detail: {

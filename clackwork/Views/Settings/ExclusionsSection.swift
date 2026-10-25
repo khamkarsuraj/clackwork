@@ -28,11 +28,14 @@ struct ExclusionsSection: View {
                             }
                             .padding(.vertical, 1)
                             .tag(app.id)
+                            .accessibilityElement(children: .ignore)
                             .accessibilityLabel(app.name)
                         }
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
+                    // Delete removes the selected app, so the list works without the mouse.
+                    .onDeleteCommand(perform: removeSelected)
                     .frame(height: max(160, CGFloat(exclusions.apps.count) * 28 + 8))
                 }
                 Divider()
