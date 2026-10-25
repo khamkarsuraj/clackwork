@@ -1,6 +1,6 @@
 import AppKit
 
-/// The menu bar icon: a solid Cherry MX switch, with a thin slash while muted and dimmed while off (FR-14).
+/// The menu bar icon: a solid mechanical key switch, with a thin slash while muted and dimmed while off (FR-14).
 /// Drawn as a template image so macOS tints it for light and dark menu bars.
 enum MenuBarIcon {
     enum State: Equatable {
@@ -51,7 +51,7 @@ enum MenuBarIcon {
         return image
     }
 
-    /// A Cherry MX switch in the style of the AirPods symbols: soft solid parts, with a thin
+    /// A mechanical key switch in the style of the AirPods symbols: soft solid parts, with a thin
     /// clear gap where one sits in front of another. Coordinates are points in the 18 × 18 box, y up.
     private static func drawSwitch(in c: CGContext) {
         c.setFillColor(.black)

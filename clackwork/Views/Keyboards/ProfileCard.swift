@@ -13,7 +13,7 @@ struct ProfileCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 swatch
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(profile.shortName)
+                    Text(profile.name)
                         .font(.caption.weight(.semibold))
                         .lineLimit(1)
                     Text(profile.family)
