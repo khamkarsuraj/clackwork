@@ -8,7 +8,7 @@ import SwiftUI
 ///
 /// `--snapshot /path/out.png [--dark]` renders the main window's layer tree to a PNG and quits.
 /// `--render-canvas /path/out.png [--dark]` renders `KeyboardsView` alone via ImageRenderer and quits.
-/// `--render-popover /path/out.png [--dark] [--popover-state off|muted|timed|automuted|paused] [--popover-profile mx-red]` renders the menu bar popover and quits.
+/// `--render-popover /path/out.png [--dark] [--popover-state off|muted|timed|automuted|paused] [--popover-profile ember-tap]` renders the menu bar popover and quits.
 /// `--export-sounds /path/dir` writes every loaded sound as a WAV file and quits.
 /// `--section settings` opens the window on that sidebar section (with any of the above).
 /// `--dump-views 1` prints the window's AppKit view tree with frames and quits.

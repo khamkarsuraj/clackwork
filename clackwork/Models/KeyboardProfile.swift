@@ -23,7 +23,7 @@ nonisolated struct KeyboardProfile: Identifiable, Hashable, Sendable {
 
     static let all: [KeyboardProfile] = [
         KeyboardProfile(
-            id: "mx-blue",
+            id: "cobalt-clack",
             name: "Cobalt Clack",
             family: "Clicky",
             description: "Sharp, high-pitched click on every press. The loudest, most “typewriter” profile.",
@@ -31,7 +31,7 @@ nonisolated struct KeyboardProfile: Identifiable, Hashable, Sendable {
             dark: Palette(body: Color(hex: 0x2F3540), cap: Color(hex: 0xD9DCE1), modifier: Color(hex: 0x8B929C), accent: Color(hex: 0x4F82E6))
         ),
         KeyboardProfile(
-            id: "mx-brown",
+            id: "walnut-bump",
             name: "Walnut Bump",
             family: "Tactile",
             description: "Soft bump, muted and office-friendly. A good default for long sessions.",
@@ -39,7 +39,7 @@ nonisolated struct KeyboardProfile: Identifiable, Hashable, Sendable {
             dark: Palette(body: Color(hex: 0x3B3B3D), cap: Color(hex: 0xD6D0C5), modifier: Color(hex: 0x9A9284), accent: Color(hex: 0xA9765A))
         ),
         KeyboardProfile(
-            id: "mx-black",
+            id: "onyx-thock",
             name: "Onyx Thock",
             family: "Linear",
             description: "Heavy, smooth press with a deep, solid sound and no bump or click.",
@@ -47,7 +47,7 @@ nonisolated struct KeyboardProfile: Identifiable, Hashable, Sendable {
             dark: Palette(body: Color(hex: 0x111113), cap: Color(hex: 0x5A5A5F), modifier: Color(hex: 0x3E3E42), accent: Color(hex: 0x9A9AA0))
         ),
         KeyboardProfile(
-            id: "mx-red",
+            id: "ember-tap",
             name: "Ember Tap",
             family: "Linear",
             description: "Light, smooth press with a soft, quiet sound. Fast and easy on the fingers.",

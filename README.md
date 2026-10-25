@@ -107,7 +107,7 @@ Key press to sound latency must stay under 20 ms (PRD NFR, issue #32). It has fo
 
    It prints old and new side by side and ends with `PASS`, or `FAIL` and exits 1 if total p95 is over 20 ms or more than 1 ms worse than the baseline. `warning: different setup` means the runs used a different device, buffer size, Mac or profile, so the numbers aren't like for like.
 
-Reports go to `perf-results/`, which isn't committed since numbers depend on the Mac. Each report records the commit (with `-dirty` when tracked files had uncommitted changes), date, Mac, macOS, output device and buffer size. `--keys 300` makes a shorter run, `--profile mx-blue` measures another profile, and `--interval 50` types more slowly. Delivery from the hardware to the tap belongs to macOS and isn't included; the live measurement below covers it.
+Reports go to `perf-results/`, which isn't committed since numbers depend on the Mac. Each report records the commit (with `-dirty` when tracked files had uncommitted changes), date, Mac, macOS, output device and buffer size. `--keys 300` makes a shorter run, `--profile cobalt-clack` measures another profile, and `--interval 50` types more slowly. Delivery from the hardware to the tap belongs to macOS and isn't included; the live measurement below covers it.
 
 **Live measurement.** In Xcode, open Product > Scheme > Edit Scheme > Run > Arguments and add `-measureLatency YES`. Run the app, grant Input Monitoring, and type at least 100 keys in any app. Every 100 key presses the Xcode console prints p50, p95 and max for each part and for the total, followed by the same numbers as a `latency-report:` JSON line. Save that JSON to a file to compare it with `scripts/latency_report.py compare old.json new.json`. The probe records timestamps only, never which key was pressed.
 
@@ -220,7 +220,7 @@ Config/           Build settings shared by both app targets, plus the App Store 
 
 ## Sound packs
 
-Recorded packs live in `clackwork/Sounds/` as `<profile-id>.caf` and `<profile-id>.json`, one per profile: `mx-blue`, `mx-brown`, `mx-black` and `mx-red`. A profile without a pack is silent.
+Recorded packs live in `clackwork/Sounds/` as `<profile-id>.caf` and `<profile-id>.json`, one per profile: `cobalt-clack`, `walnut-bump`, `onyx-thock` and `ember-tap`. A profile without a pack is silent.
 
 Sound packs are not committed; each developer keeps them locally. A pack is a folder with one audio file and a `config.json` that maps key scan codes to `[start ms, duration ms]` slices of it. To add one, run:
 

@@ -12,7 +12,7 @@
 #
 #   --keys N        simulated key presses (default 1000)
 #   --interval MS   milliseconds between presses (default 30)
-#   --profile ID    mx-blue, mx-brown, mx-black or mx-red (default mx-brown)
+#   --profile ID    cobalt-clack, walnut-bump, onyx-thock or ember-tap (default walnut-bump)
 #   --compare FILE  compare against an earlier report; exits 1 if total p95 is over
 #                   20 ms or more than 1 ms worse
 
@@ -22,7 +22,7 @@ usage() { sed -n '3,17p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
 keys=1000
 interval=30
-profile=mx-brown
+profile=walnut-bump
 compare=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
