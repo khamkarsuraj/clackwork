@@ -29,5 +29,8 @@ clackwork/Sounds/
 # Test results
 *.xcresult
 
+# Latency reports from scripts/latency_bench.sh; numbers depend on the Mac they ran on
+perf-results/
+
 # LLVM coverage output from running an instrumented build by hand
 *.profraw

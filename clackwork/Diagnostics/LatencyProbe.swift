@@ -11,6 +11,9 @@ import os
 /// - handoff:  tap callback to the sound being scheduled
 /// - audio:    worst-case wait for the next audio cycle plus the output device latency
 /// - total:    delivery + handoff + audio
+///
+/// Each summary is also logged and printed as a JSON `LatencyReport`, which
+/// `scripts/latency_bench.sh --compare` can compare against another run.
 /// Only ever called from the key listener thread, so it needs no locking.
 nonisolated final class LatencyProbe: @unchecked Sendable {
     static let isEnabled = UserDefaults.standard.bool(forKey: "measureLatency")
@@ -31,10 +34,17 @@ nonisolated final class LatencyProbe: @unchecked Sendable {
         total.append(d + h + audioPathMs)
 
         guard total.count >= Self.reportEvery else { return }
+        let summaries = ["delivery": LatencySummary(delivery), "handoff": LatencySummary(handoff),
+                         "total": LatencySummary(total)]
         let line = "latency over \(total.count) keys (ms) | "
-            + "delivery \(Self.summary(delivery)) | handoff \(Self.summary(handoff)) | "
-            + "audio \(String(format: "%.1f", audioPathMs)) | total \(Self.summary(total))"
+            + "delivery \(summaries["delivery"]!.text) | handoff \(summaries["handoff"]!.text) | "
+            + "audio \(String(format: "%.1f", audioPathMs)) | total \(summaries["total"]!.text)"
         Self.logger.notice("\(line, privacy: .public)")
+        let report = LatencyReport(kind: "live", keys: total.count, parts: summaries,
+                                   audioPathMs: audioPathMs, context: .init()).line
+        Self.logger.notice("\(report, privacy: .public)")
+        print(report)
+        fflush(stdout)
         delivery.removeAll(keepingCapacity: true)
         handoff.removeAll(keepingCapacity: true)
         total.removeAll(keepingCapacity: true)
@@ -58,12 +68,5 @@ nonisolated final class LatencyProbe: @unchecked Sendable {
 
     private static func ms(from start: UInt64, to end: UInt64) -> Double {
         end > start ? Double(end - start) / 1_000_000 : 0
-    }
-
-    /// "p50 x / p95 y / max z"
-    private static func summary(_ values: [Double]) -> String {
-        let sorted = values.sorted()
-        func pct(_ p: Double) -> Double { sorted[min(sorted.count - 1, Int(Double(sorted.count) * p))] }
-        return String(format: "p50 %.1f / p95 %.1f / max %.1f", pct(0.5), pct(0.95), sorted.last ?? 0)
     }
 }
