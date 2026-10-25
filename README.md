@@ -9,7 +9,7 @@ Early v1.0 development.
 | Area                                                                      | State                                      |
 | ------------------------------------------------------------------------- | ------------------------------------------ |
 | Main window: profiles, preview, volume, Try it field, light and dark mode | Done                                       |
-| Sound engine with 4 profiles: Cherry MX Blue, Brown, Black and Red        | Done, using development recordings; in-house recordings pending (#49) |
+| Sound engine with 4 profiles: Cobalt Clack, Walnut Bump, Onyx Thock and Ember Tap | Done, using development recordings; in-house recordings pending (#49) |
 | System-wide key listener                                                  | Done                                       |
 | Global shortcuts, customizable in Settings                                | Done                                       |
 | Settings: launch at login, Dock icon, Input Monitoring status             | Done                                       |

@@ -1,10 +1,9 @@
 import SwiftUI
 
-/// One of the keyboard sound profiles: Cherry MX Blue, Brown, Black and Red styles.
+/// One of the keyboard sound profiles: Cobalt Clack, Walnut Bump, Onyx Thock and Ember Tap.
 nonisolated struct KeyboardProfile: Identifiable, Hashable, Sendable {
     let id: String
     let name: String
-    let shortName: String
     let family: String
     let description: String
     let light: Palette
@@ -25,8 +24,7 @@ nonisolated struct KeyboardProfile: Identifiable, Hashable, Sendable {
     static let all: [KeyboardProfile] = [
         KeyboardProfile(
             id: "mx-blue",
-            name: "Cherry MX Blue style",
-            shortName: "MX Blue style",
+            name: "Cobalt Clack",
             family: "Clicky",
             description: "Sharp, high-pitched click on every press. The loudest, most “typewriter” profile.",
             light: Palette(body: Color(hex: 0x2F3540), cap: Color(hex: 0xF2F2F2), modifier: Color(hex: 0xC9CED6), accent: Color(hex: 0x3A6FD8)),
@@ -34,8 +32,7 @@ nonisolated struct KeyboardProfile: Identifiable, Hashable, Sendable {
         ),
         KeyboardProfile(
             id: "mx-brown",
-            name: "Cherry MX Brown style",
-            shortName: "MX Brown style",
+            name: "Walnut Bump",
             family: "Tactile",
             description: "Soft bump, muted and office-friendly. A good default for long sessions.",
             light: Palette(body: Color(hex: 0x3B3B3D), cap: Color(hex: 0xECE7DD), modifier: Color(hex: 0xC9C1B2), accent: Color(hex: 0x8A5A3C)),
@@ -43,8 +40,7 @@ nonisolated struct KeyboardProfile: Identifiable, Hashable, Sendable {
         ),
         KeyboardProfile(
             id: "mx-black",
-            name: "Cherry MX Black style",
-            shortName: "MX Black style",
+            name: "Onyx Thock",
             family: "Linear",
             description: "Heavy, smooth press with a deep, solid sound and no bump or click.",
             light: Palette(body: Color(hex: 0x1C1C1E), cap: Color(hex: 0x4A4A4E), modifier: Color(hex: 0x2E2E31), accent: Color(hex: 0x8E8E93)),
@@ -52,8 +48,7 @@ nonisolated struct KeyboardProfile: Identifiable, Hashable, Sendable {
         ),
         KeyboardProfile(
             id: "mx-red",
-            name: "Cherry MX Red style",
-            shortName: "MX Red style",
+            name: "Ember Tap",
             family: "Linear",
             description: "Light, smooth press with a soft, quiet sound. Fast and easy on the fingers.",
             light: Palette(body: Color(hex: 0xE5E5EA), cap: Color(hex: 0xFFFFFF), modifier: Color(hex: 0xD1D1D6), accent: Color(hex: 0xD9363E)),
@@ -61,7 +56,7 @@ nonisolated struct KeyboardProfile: Identifiable, Hashable, Sendable {
         ),
     ]
 
-    /// The profile selected on first launch (PRD: MX Brown style is the default).
+    /// The profile selected on first launch (PRD: Walnut Bump, the tactile profile, is the default).
     static let defaultProfile = all[1]
 }
 

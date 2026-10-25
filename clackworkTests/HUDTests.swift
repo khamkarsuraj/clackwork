@@ -46,7 +46,7 @@ struct HUDContentTests {
 
     @Test func keyboardChangeShowsTheProfileAndItsPosition() {
         let next = content(.nextKeyboard)
-        #expect(next.title == "Cherry MX Brown style")
+        #expect(next.title == "Walnut Bump")
         #expect(next.detail == "Keyboard 2 of \(KeyboardProfile.all.count)")
         #expect(next.icon == .profile(brown))
         #expect(content(.previousKeyboard) == next)
