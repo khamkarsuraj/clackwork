@@ -86,11 +86,11 @@ struct ExclusionTests {
 
     @Test func gateBlocksPlaybackWhilePaused() {
         let gate = PlaybackGate()
-        gate.update(isEnabled: true, isMuted: false, profileID: "mx-brown")
+        gate.update(isEnabled: true, isMuted: false, profileID: "walnut-bump")
         gate.update(isExcludedAppInFront: true)
         #expect(gate.profileToPlay == nil)
         gate.update(isExcludedAppInFront: false)
-        #expect(gate.profileToPlay == "mx-brown")
+        #expect(gate.profileToPlay == "walnut-bump")
     }
 
     @Test func independentOfMute() {

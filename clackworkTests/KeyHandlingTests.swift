@@ -42,14 +42,14 @@ struct KeyHandlingTests {
 
     @Test func gatePlaysOnlyWhenEnabledAndNotMuted() {
         let gate = PlaybackGate()
-        gate.update(isEnabled: true, isMuted: false, profileID: "mx-blue")
-        #expect(gate.profileToPlay == "mx-blue")
+        gate.update(isEnabled: true, isMuted: false, profileID: "cobalt-clack")
+        #expect(gate.profileToPlay == "cobalt-clack")
         gate.update(isMuted: true)
         #expect(gate.profileToPlay == nil)
         gate.update(isEnabled: false, isMuted: false)
         #expect(gate.profileToPlay == nil)
-        gate.update(isEnabled: true, profileID: "mx-red")
-        #expect(gate.profileToPlay == "mx-red")
+        gate.update(isEnabled: true, profileID: "ember-tap")
+        #expect(gate.profileToPlay == "ember-tap")
     }
 
     // MARK: Latency probe timestamps (NFR latency)

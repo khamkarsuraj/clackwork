@@ -93,12 +93,12 @@ struct AutoMuteTests {
 
     @Test func gateBlocksPlaybackWhileAutoMuted() {
         let gate = PlaybackGate()
-        gate.update(isEnabled: true, isMuted: false, profileID: "mx-brown")
-        #expect(gate.profileToPlay == "mx-brown")
+        gate.update(isEnabled: true, isMuted: false, profileID: "walnut-bump")
+        #expect(gate.profileToPlay == "walnut-bump")
         gate.update(isAutoMuted: true)
         #expect(gate.profileToPlay == nil)
         gate.update(isAutoMuted: false)
-        #expect(gate.profileToPlay == "mx-brown")
+        #expect(gate.profileToPlay == "walnut-bump")
     }
 
     @Test func menuBarIconShowsAutoMuteAsMuted() {

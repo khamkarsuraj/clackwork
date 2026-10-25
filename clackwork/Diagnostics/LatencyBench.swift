@@ -14,7 +14,7 @@ import Foundation
 /// loaded, since then nothing would be scheduled. Optional launch arguments:
 ///
 /// - `-latencyBenchInterval 30`: milliseconds between presses (default 30, fast typing)
-/// - `-latencyBenchProfile mx-blue`: the profile to play (default: the default profile)
+/// - `-latencyBenchProfile cobalt-clack`: the profile to play (default: the default profile)
 /// - `-latencyBenchAudible YES`: play at the saved volume instead of silently
 ///
 /// `scripts/latency_bench.sh` builds Release, runs this and saves the report.
