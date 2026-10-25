@@ -144,6 +144,41 @@ Each milestone prints the time since the kernel started the process, so dyld and
 log stream --predicate 'subsystem == "com.surajkhamkar.clackwork" && category == "startup"'
 ```
 
+## Architecture
+
+A listen-only key tap feeds a preloaded audio engine. The key path runs on the listener's own thread, so a busy UI can never delay a sound. Everything the user controls lives in `AppState` on the main thread, which reaches the key path only through the playback gate, the mixer volume and starting or stopping the listener.
+
+```mermaid
+flowchart LR
+    subgraph keypath["Key path · listener thread"]
+        direction LR
+        HW["Keyboard"] --> Tap["KeyListener<br/>CGEventTap, listen-only<br/>skips password fields and auto-repeat"]
+        Tap -->|"KeyEvent: type, up/down, position"| Gate{"PlaybackGate<br/>on, not muted,<br/>not paused?"}
+        Gate -->|"key type + profile"| Engine["SoundEngine<br/>preloaded buffers,<br/>pool of 12 voices"]
+        Engine --> Mixer["Mixer<br/>master volume"]
+        Mixer --> Out["Output device"]
+    end
+
+    subgraph controls["Controls · main thread"]
+        direction TB
+        UI["Popover and main window"] --> State
+        Keys["Global shortcuts<br/>HotKeyCenter"] --> State
+        Keys --> HUD["HUD overlay"]
+        Mic["MicrophoneMonitor<br/>auto-mute in calls"] --> State
+        Front["Frontmost app<br/>per-app exclusions"] --> State
+        Perm["Input Monitoring<br/>permission check"] --> State
+        State["AppState<br/>saved in UserDefaults"]
+    end
+
+    State -->|"on, mute, pause, profile"| Gate
+    State -->|"volume"| Mixer
+    State -->|"starts and stops"| Tap
+    State --> Icon["Menu bar icon"]
+    Tap -.->|"KeyEvent, on the main thread"| Anim["On-screen keyboard<br/>animation"]
+```
+
+Only the key type picks the sound. The key's position travels with it for the on-screen keyboard animation, in memory only. Characters are never read.
+
 ## Project layout
 
 ```
