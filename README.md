@@ -23,6 +23,7 @@ Early v1.0 development.
 
 - Xcode 26 or later. Deployment target is macOS 13 Ventura.
 - Open `clackwork.xcodeproj`, select the `clackwork` scheme, and press Cmd+R.
+- Two app targets build the same sources: `clackwork` is the direct download (a notarized DMG, which gets Sparkle updates in #77), and `clackwork App Store` is the Mac App Store build, compiled with `APP_STORE` and never linked against Sparkle. Both are sandboxed. Code that differs between them checks `Distribution.isAppStore`. Their build settings live in `Config/`; change them there, not in Xcode's Build Settings pane, so the two can't drift apart.
 
 ## Tests
 
@@ -193,6 +194,7 @@ clackwork/
 ├── State/        App state and shortcut store
 └── Views/        Main window, Keyboards, Settings, Shortcuts
 clackworkTests/   Unit tests
+Config/           Build settings shared by both app targets, plus the App Store additions
 ```
 
 ## Sound packs

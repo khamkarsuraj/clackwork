@@ -46,6 +46,21 @@ jobs:
             | tee xcodebuild.log \
             | grep -E '^Test (case|suite)|error:|warning:|\*\* (TEST|BUILD)'
 
+      # The App Store target shares the sources but compiles with APP_STORE; make sure it still builds.
+      - name: Build the App Store target
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project clackwork.xcodeproj \
+            -scheme 'clackwork App Store' \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            EXCLUDED_SOURCE_FILE_NAMES=AppIcon.icon \
+            ASSETCATALOG_COMPILER_APPICON_NAME= \
+            | tee -a xcodebuild.log \
+            | grep -E 'error:|\*\* BUILD'
+
       - name: Coverage summary
         if: success()
         run: xcrun xccov view --report --only-targets TestResults.xcresult
