@@ -35,7 +35,18 @@ xcodebuild test -project clackwork.xcodeproj -scheme clackwork -destination 'pla
 
 Unit tests live in `clackworkTests/` and use Swift Testing. Each suite names the PRD requirement or issue it covers. They need no sound packs, audio device or Input Monitoring permission. The keyboard animation test briefly opens a small borderless window.
 
-CI runs the same tests on every pull request and on every push to `main` (`.github/workflows/ci.yml`). Mark `build-and-test` as a required check in the branch settings so a pull request can't merge until it passes. CPU, memory and latency targets are measured locally, since they need the sound packs and real audio hardware; see the sections below.
+CI runs the same tests on every pull request and on every push to `main` (`.github/workflows/ci.yml`). Mark `build-and-test` and `test-intel` as required checks in the branch settings so a pull request can't merge until they pass. CPU, memory and latency targets are measured locally, since they need the sound packs and real audio hardware; see the sections below.
+
+To run the tests as Intel code on an Apple silicon Mac (under Rosetta), use `-destination 'platform=macOS,arch=x86_64'`.
+
+## Compatibility
+
+Clackwork runs on macOS 13 Ventura and later, on Apple silicon and Intel (PRD NFR, issue #39).
+
+- **Checked on every pull request:** the Release build is universal (`arm64` and `x86_64`) and targets macOS 13, and the tests pass on Apple silicon and on an Intel runner.
+- **Checked by the compiler:** an API newer than macOS 13 doesn't build without an `#available` check. Today there's one, for a macOS 26 toolbar style.
+- **Checked at runtime:** auto-mute needs the per-process audio API of macOS 14.2. On older versions the setting is disabled and says "Needs macOS 14.2 or later".
+- **Checked by hand:** that the app launches and works on macOS 13 itself. GitHub has no macOS 13 runners, so use a macOS 13 Mac or virtual machine.
 
 ## Permissions
 
