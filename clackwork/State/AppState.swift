@@ -12,6 +12,7 @@ final class AppState: ObservableObject {
         static let showDockIcon = "showDockIcon"
         static let showHUD = "showHUD"
         static let autoMute = "autoMuteDuringCalls"
+        static let onboarding = "hasCompletedOnboarding"
     }
 
     // MARK: Sound
@@ -59,6 +60,11 @@ final class AppState: ObservableObject {
     /// Briefly show what a shortcut changed, like the system volume overlay.
     @Published var showHUD: Bool {
         didSet { defaults.set(showHUD, forKey: Key.showHUD) }
+    }
+
+    /// False until the first-launch onboarding is finished or skipped (FR-21 to FR-24).
+    @Published var hasCompletedOnboarding: Bool {
+        didSet { defaults.set(hasCompletedOnboarding, forKey: Key.onboarding) }
     }
 
     // MARK: Sound settings (stored now, used by the engine in a later step)
@@ -147,6 +153,7 @@ final class AppState: ObservableObject {
         // Off by default: the menu bar item is how Clackwork is reached.
         showDockIcon = defaults.object(forKey: Key.showDockIcon) as? Bool ?? false
         showHUD = defaults.object(forKey: Key.showHUD) as? Bool ?? true
+        hasCompletedOnboarding = defaults.bool(forKey: Key.onboarding)
         autoMuteDuringCalls = defaults.object(forKey: Key.autoMute) as? Bool ?? false
         hasInputMonitoringAccess = permissionCheck()
 
@@ -203,12 +210,15 @@ final class AppState: ObservableObject {
                 : "listener waiting for Input Monitoring"
         )
 
-        // Permission can be granted or revoked in System Settings while the app runs;
-        // re-check whenever the user comes back to the app.
+        // Permission and the login item can both be changed in System Settings while the
+        // app runs; re-check whenever the user comes back to the app.
         activationObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refreshPermissionStatus() }
+            MainActor.assumeIsolated {
+                self?.refreshPermissionStatus()
+                self?.refreshLaunchAtLogin()
+            }
         }
     }
 
@@ -317,6 +327,24 @@ final class AppState: ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
+    /// Starts a fresh copy of Clackwork and quits this one. A grant made in System Settings
+    /// can stay out of reach until the app restarts, if the user picked "Later" on the
+    /// system's "Quit & Reopen" prompt. Hot keys are registered non-exclusively, so the two
+    /// copies overlapping for a moment doesn't cost the new one its shortcuts.
+    func relaunch() {
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { _, error in
+            DispatchQueue.main.async {
+                if let error {
+                    NSLog("Relaunch failed: \(error)")
+                } else {
+                    NSApp.terminate(nil)
+                }
+            }
+        }
+    }
+
     // MARK: Listener lifecycle
 
     /// The tap runs only while sound is enabled and permission is granted. While sound is
@@ -361,6 +389,13 @@ final class AppState: ObservableObject {
 
     /// The interval of the running permission check, for tests.
     var permissionPollInterval: TimeInterval? { permissionPoll?.timeInterval }
+
+    /// Re-reads the login item, which the user can remove in System Settings › General ›
+    /// Login Items (FR-20). Setting the matching value makes `applyLaunchAtLogin` a no-op.
+    func refreshLaunchAtLogin() {
+        let current = SMAppService.mainApp.status == .enabled
+        if current != launchAtLogin { launchAtLogin = current }
+    }
 
     private func applyLaunchAtLogin() {
         let current = SMAppService.mainApp.status == .enabled

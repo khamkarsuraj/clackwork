@@ -15,6 +15,7 @@ import SwiftUI
 /// `--stress-sounds 300` plays that many random keys 12 ms apart from two threads, then quits.
 /// `--render-settings /path/out.png [--dark]` renders the Settings section and quits; `--with-exclusions` renders the Exclusions section with sample apps instead.
 /// `--render-cheatsheet /path/out.png [--dark]` renders the shortcut cheat sheet and quits.
+/// `--render-onboarding /path/out.png [--dark] [--onboarding-step welcome|permission|keyboard|finish]` renders that onboarding step and quits.
 /// `--render-hud /path/out.png [--dark] [--hud-action toggleMute|toggleSound|nextKeyboard|volumeUp]` renders the shortcut HUD and quits.
 /// `--mic-report 1` prints which processes CoreAudio reports as running audio input, and quits.
 /// `--test-shortcuts 1` runs every shortcut action through the hot key router and prints the state.
@@ -136,6 +137,35 @@ enum DebugSnapshot {
                 .environmentObject(state)
                 .environmentObject(exclusions)
                 .frame(width: 700, height: 548))
+            host.frame.size = host.fittingSize
+            let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+            window.contentView = host
+            window.orderFrontRegardless()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                defer { NSApp.terminate(nil) }
+                render(host, in: window, to: path)
+            }
+            return
+        }
+
+        if let path = value(after: "--render-onboarding", in: args) {
+            let defaults = UserDefaults(suiteName: "debug-onboarding")!
+            defaults.removePersistentDomain(forName: "debug-onboarding")
+            // Sound off, so no real tap starts; access is stubbed so the walk below
+            // stops on the permission step only when asked to.
+            defaults.set(false, forKey: "isEnabled")
+            let target = value(after: "--onboarding-step", in: args) ?? "welcome"
+            let state = AppState(defaults: defaults, engine: nil, permissionCheck: { target != "permission" },
+                                 microphone: MicrophoneMonitor(live: false), frontmostBundleID: { nil })
+            let model = OnboardingModel(appState: state, setLaunchAtLogin: { _ in })
+            // Walks forward the way a user would.
+            let steps: [String: OnboardingModel.Step] = ["welcome": .welcome, "permission": .permission,
+                                                         "keyboard": .keyboard, "finish": .finish]
+            while let wanted = steps[target], model.step != wanted, model.step != .finish { model.next() }
+            // Controls are AppKit-backed, which ImageRenderer skips; draw it in a window instead.
+            let host = NSHostingView(rootView: OnboardingView(model: model)
+                .environmentObject(state)
+                .frame(width: 720, height: 520))
             host.frame.size = host.fittingSize
             let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
             window.contentView = host
