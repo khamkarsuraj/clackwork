@@ -360,7 +360,7 @@ The menu bar icon opens a compact popover, about 280 px wide.
 - [ ] Keyboard picker listing the 5 profiles, with a checkmark on the active one.
 - [ ] Volume slider with speaker icons at each end.
 - [ ] Mute button with the timed-mute menu (FR-13).
-- [ ] Footer with "Open Clackwork…", Settings and Quit.
+- [ ] Footer with "Open Clackwork", Settings and Quit.
 
 **Design:** `docs/design/Main.dc.html`, `docs/design/PopoverDark.dc.html` (kept locally, not in the repo)
 EOF
