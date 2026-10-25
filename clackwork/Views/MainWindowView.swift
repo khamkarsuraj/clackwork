@@ -21,12 +21,32 @@ enum SidebarSection: String, CaseIterable, Identifiable {
 }
 
 /// The three-pane main window: toolbar, sidebar, and the selected section's canvas.
+/// On first launch it shows onboarding instead, until that is finished or skipped.
 struct MainWindowView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var router: WindowRouter
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
+        Group {
+            if appState.hasCompletedOnboarding {
+                splitView
+            } else {
+                OnboardingView(appState: appState)
+            }
+        }
+        .sheet(isPresented: $router.isShowingShortcutSheet) {
+            ShortcutCheatSheet()
+        }
+        .onAppear {
+            router.openMainWindow = { [openWindow] in openWindow(id: "main") }
+        }
+        // A sheet dies with its window; the flag must not outlive it, or reopening the
+        // window would show the sheet unasked.
+        .onDisappear { router.isShowingShortcutSheet = false }
+    }
+
+    private var splitView: some View {
         NavigationSplitView {
             List(SidebarSection.allCases, selection: $router.section) { item in
                 Label(item.rawValue, systemImage: item.symbol)
@@ -60,15 +80,6 @@ struct MainWindowView: View {
                 }
             }
         }
-        .sheet(isPresented: $router.isShowingShortcutSheet) {
-            ShortcutCheatSheet()
-        }
-        .onAppear {
-            router.openMainWindow = { [openWindow] in openWindow(id: "main") }
-        }
-        // A sheet dies with its window; the flag must not outlive it, or reopening the
-        // window would show the sheet unasked.
-        .onDisappear { router.isShowingShortcutSheet = false }
     }
 }
 
