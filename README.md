@@ -239,7 +239,7 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-`.github/workflows/release.yml` then archives the `clackwork` scheme as a universal Release build, with the version from the tag and the commit count as the build number, signs it with Developer ID, runs `scripts/package_dmg.sh` to make, notarize and staple `Clackwork-<version>.dmg`, creates the release with generated notes, and commits an updated `appcast.xml` to the `gh-pages` branch. A tag with a suffix, such as `v1.1.0-beta.1`, becomes a pre-release. The dSYMs are kept as a workflow artifact for 90 days.
+`.github/workflows/release.yml` then archives the `clackwork` scheme as a universal Release build, with the version from the tag and the commit count as the build number, signs it with Developer ID, runs `scripts/package_dmg.sh` to make, notarize and staple `Clackwork-<version>.dmg`, creates the release with generated notes, and commits to the `gh-pages` branch: `latest.json` and the landing page's download link now point at the new DMG, and `appcast.xml` gains the release. A pre-release doesn't replace a stable release on the landing page. A tag with a suffix, such as `v1.1.0-beta.1`, becomes a pre-release. The dSYMs are kept as a workflow artifact for 90 days.
 
 The workflow needs these repository secrets (Settings > Secrets and variables > Actions):
 
@@ -250,7 +250,7 @@ The workflow needs these repository secrets (Settings > Secrets and variables > 
 | `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID`, `NOTARY_KEY_BASE64` | An App Store Connect API key with the Developer role: its key ID, the issuer ID, and the `.p8` file encoded with `base64 -i AuthKey.p8` |
 | `SPARKLE_PRIVATE_KEY` | The EdDSA private key printed by Sparkle's `generate_keys -x`. Without it the release is still published; only the appcast step is skipped |
 
-GitHub Pages serves the `gh-pages` branch, which also holds the landing page at https://khamkarsuraj.github.io/clackwork/. The appcast is at `https://khamkarsuraj.github.io/clackwork/appcast.xml`, which is the feed URL for #77. Sparkle fetches both the appcast and the DMG without signing in, so the repository has to stay public for updates to reach anyone.
+GitHub Pages serves the `gh-pages` branch, which also holds the landing page at https://khamkarsuraj.github.io/clackwork/. The page reads `latest.json` for its download button and falls back to the GitHub API, preferring a stable release over a pre-release; its static link always points at a DMG too, so it works without JavaScript. The appcast is at `https://khamkarsuraj.github.io/clackwork/appcast.xml`, which is the feed URL for #77. Sparkle fetches both the appcast and the DMG without signing in, so the repository has to stay public for updates to reach anyone.
 
 To package by hand, build a Developer ID signed app (Product > Archive in Xcode, then Distribute App > Direct Distribution > Export), store notarization credentials once with `xcrun notarytool store-credentials clackwork`, and run:
 
