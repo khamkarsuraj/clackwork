@@ -230,6 +230,36 @@ scripts/import_soundpack.sh <pack-folder> <profile-id>
 
 Keep each pack's license notice in `clackwork/Sounds/ThirdPartyNotices.txt` so it ships with the sounds.
 
+## Releasing
+
+The direct-download build ships as a notarized DMG attached to a GitHub release, and Sparkle (#77) reads an appcast served by GitHub Pages. Pushing a version tag does all of it:
+
+```
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+`.github/workflows/release.yml` then archives the `clackwork` scheme as a universal Release build, with the version from the tag and the commit count as the build number, signs it with Developer ID, runs `scripts/package_dmg.sh` to make, notarize and staple `Clackwork-<version>.dmg`, creates the release with generated notes, and commits an updated `appcast.xml` to the `gh-pages` branch. A tag with a suffix, such as `v1.1.0-beta.1`, becomes a pre-release. The dSYMs are kept as a workflow artifact for 90 days.
+
+The workflow needs these repository secrets (Settings > Secrets and variables > Actions):
+
+| Secret | What it is |
+|---|---|
+| `DEVELOPER_ID_P12_BASE64` | The Developer ID Application certificate with its private key, exported from Keychain Access as a `.p12` and encoded with `base64 -i cert.p12` |
+| `DEVELOPER_ID_P12_PASSWORD` | The password chosen on export |
+| `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID`, `NOTARY_KEY_BASE64` | An App Store Connect API key with the Developer role: its key ID, the issuer ID, and the `.p8` file encoded with `base64 -i AuthKey.p8` |
+| `SPARKLE_PRIVATE_KEY` | The EdDSA private key printed by Sparkle's `generate_keys -x`. Without it the release is still published; only the appcast step is skipped |
+
+One-time setup: enable GitHub Pages for the repository from the `gh-pages` branch, root folder, after the first release has created the branch. The appcast is then at `https://khamkarsuraj.github.io/clackwork/appcast.xml`, which is the feed URL for #77. Sparkle fetches both the appcast and the DMG without signing in, so the repository has to be public, or on a plan that serves private Pages, before an update can reach anyone.
+
+To package by hand, build a Developer ID signed app (Product > Archive in Xcode, then Distribute App > Direct Distribution > Export), store notarization credentials once with `xcrun notarytool store-credentials clackwork`, and run:
+
+```
+scripts/package_dmg.sh --app path/to/clackwork.app --notary-profile clackwork
+```
+
+Without a `--notary-profile` or `--notary-key` the script only signs the DMG, which is enough to check the image locally.
+
 ## Debug tools
 
 Debug builds accept launch flags that need no screen recording permission. Run the binary inside the built app:

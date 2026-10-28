@@ -1,0 +1,219 @@
+name: Release
+
+# Pushing a version tag (v1.0.0, or v1.1.0-beta.1 for a pre-release) builds the direct-download
+# app, signs and notarizes it, publishes the DMG as a GitHub release and updates the Sparkle
+# appcast on GitHub Pages (issue #45). See "Releasing" in the README for the secrets it needs.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+
+env:
+  TEAM_ID: 7R72AD6YTD
+  SPARKLE_VERSION: 2.10.1
+  SPARKLE_SHA256: 1a856d2a9edb8e628de88121d7be04cf0e2167f8641650b78fca00b14244cf27
+
+jobs:
+  release:
+    # macos-26, not the quicker macos-15 that CI uses: the Icon Composer app icon only
+    # compiles on a macOS 26 host, and a release needs the icon.
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The build number is the commit count, so the whole history is needed.
+          fetch-depth: 0
+
+      - name: Select the newest stable Xcode 26
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26*.app | grep -viE 'beta|rc' | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
+      # The tag gives the marketing version. The build number is the number of commits on
+      # the tagged commit: it only grows on main, Sparkle can compare it, and it can be
+      # reproduced locally with `git rev-list --count`.
+      - name: Work out the version
+        id: version
+        run: |
+          tag=$GITHUB_REF_NAME
+          [[ $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] \
+            || { echo "::error::Tag '$tag' is not vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-suffix"; exit 1; }
+          version=${tag#v}
+          build=$(git rev-list --count HEAD)
+          prerelease=false; [[ $version == *-* ]] && prerelease=true
+          {
+            echo "version=$version"
+            echo "build=$build"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+          echo "Version $version, build $build, prerelease $prerelease"
+
+      - name: Import the Developer ID certificate
+        env:
+          DEVELOPER_ID_P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          [[ -n "$DEVELOPER_ID_P12_BASE64" ]] || { echo "::error::Secret DEVELOPER_ID_P12_BASE64 is not set"; exit 1; }
+          keychain=$RUNNER_TEMP/release.keychain-db
+          keychain_password=$(openssl rand -base64 24)
+          echo "$DEVELOPER_ID_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$RUNNER_TEMP/developer-id.p12" -k "$keychain" -P "$DEVELOPER_ID_P12_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/developer-id.p12"
+          security find-identity -v -p codesigning "$keychain" | grep -q "Developer ID Application" \
+            || { echo "::error::The certificate has no 'Developer ID Application' identity"; exit 1; }
+
+      - name: Archive a universal Release build
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project clackwork.xcodeproj \
+            -scheme clackwork \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -archivePath build/clackwork.xcarchive \
+            MARKETING_VERSION=${{ steps.version.outputs.version }} \
+            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build }} \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            | tee xcodebuild.log \
+            | grep -E 'error:|warning:|\*\* (ARCHIVE|BUILD)'
+
+      - name: Export the app
+        run: |
+          set -o pipefail
+          cat > build/export.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>developer-id</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath build/clackwork.xcarchive \
+            -exportOptionsPlist build/export.plist \
+            -exportPath build/export \
+            | tee -a xcodebuild.log \
+            | grep -E 'error:|\*\* EXPORT'
+          app=build/export/clackwork.app
+          binary=$app/Contents/MacOS/clackwork
+          archs=$(lipo -archs "$binary")
+          echo "Architectures: $archs"
+          [[ " $archs " == *" arm64 "* && " $archs " == *" x86_64 "* ]] || { echo "::error::Not universal: $archs"; exit 1; }
+          codesign -dvv "$app" 2>&1 | grep -E '^(Identifier|TeamIdentifier|Authority=Developer ID)'
+          plutil -extract CFBundleShortVersionString raw -o - "$app/Contents/Info.plist" | sed 's/^/Version: /'
+          plutil -extract CFBundleVersion raw -o - "$app/Contents/Info.plist" | sed 's/^/Build: /'
+
+      - name: Package, notarize and staple the DMG
+        env:
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+          NOTARY_KEY_BASE64: ${{ secrets.NOTARY_KEY_BASE64 }}
+        run: |
+          [[ -n "$NOTARY_KEY_BASE64" && -n "$NOTARY_KEY_ID" && -n "$NOTARY_ISSUER_ID" ]] \
+            || { echo "::error::Secrets NOTARY_KEY_ID, NOTARY_ISSUER_ID and NOTARY_KEY_BASE64 are all needed"; exit 1; }
+          echo "$NOTARY_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+          scripts/package_dmg.sh \
+            --app build/export/clackwork.app \
+            --out dist \
+            --notary-key "$RUNNER_TEMP/notary.p8" \
+            --notary-key-id "$NOTARY_KEY_ID" \
+            --notary-issuer "$NOTARY_ISSUER_ID"
+          rm "$RUNNER_TEMP/notary.p8"
+
+      # The release goes up before the appcast changes, so the DMG URL is live by the time
+      # a Sparkle client reads the new item.
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/Clackwork-*.dmg \
+            --verify-tag \
+            --title "Clackwork ${{ steps.version.outputs.version }}" \
+            --generate-notes \
+            ${{ steps.version.outputs.prerelease == 'true' && '--prerelease' || '' }}
+
+      - name: Fetch the Sparkle tools
+        run: |
+          curl -sSL -o "$RUNNER_TEMP/sparkle.tar.xz" \
+            "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE_VERSION/Sparkle-$SPARKLE_VERSION.tar.xz"
+          echo "$SPARKLE_SHA256  $RUNNER_TEMP/sparkle.tar.xz" | shasum -a 256 -c -
+          mkdir -p "$RUNNER_TEMP/sparkle"
+          tar -xJf "$RUNNER_TEMP/sparkle.tar.xz" -C "$RUNNER_TEMP/sparkle" bin/generate_appcast
+
+      # The appcast lives on the gh-pages branch, served by GitHub Pages. The first release
+      # creates the branch.
+      - name: Check out the gh-pages branch
+        run: |
+          if git fetch origin gh-pages; then
+            git worktree add pages FETCH_HEAD
+            git -C pages switch -C gh-pages
+          else
+            git worktree add --detach pages
+            git -C pages switch --orphan gh-pages
+          fi
+
+      # generate_appcast keeps the items already in appcast.xml and adds the new DMG, signed
+      # with the EdDSA key. Without the key the release still stands; only the appcast is skipped.
+      - name: Update the appcast
+        id: appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          if [[ -z "$SPARKLE_PRIVATE_KEY" ]]; then
+            echo "::warning::Secret SPARKLE_PRIVATE_KEY is not set; the appcast was not updated"
+            exit 0
+          fi
+          [[ -f pages/appcast.xml ]] && cp pages/appcast.xml dist/appcast.xml
+          "$RUNNER_TEMP/sparkle/bin/generate_appcast" \
+            --ed-key-file - \
+            --download-url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/" \
+            --link "https://github.com/$GITHUB_REPOSITORY/releases" \
+            --maximum-deltas 0 \
+            -o dist/appcast.xml \
+            dist <<< "$SPARKLE_PRIVATE_KEY"
+          cp dist/appcast.xml pages/appcast.xml
+          touch pages/.nojekyll
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+          cat dist/appcast.xml
+
+      - name: Publish the appcast to GitHub Pages
+        if: steps.appcast.outputs.updated == 'true'
+        run: |
+          cd pages
+          git add -A
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "Appcast for $GITHUB_REF_NAME"
+          git push origin gh-pages
+
+      - name: Remove the signing keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/release.keychain-db" 2>/dev/null || true
+
+      - name: Upload the dSYMs and build log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ github.ref_name }}
+          path: |
+            build/clackwork.xcarchive/dSYMs
+            xcodebuild.log
+          retention-days: 90
