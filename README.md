@@ -1,5 +1,11 @@
 # Clackwork
 
+[![Latest release](https://img.shields.io/github/v/release/khamkarsuraj/clackwork?include_prereleases&label=release)](https://github.com/khamkarsuraj/clackwork/releases)
+[![Downloads](https://img.shields.io/github/downloads/khamkarsuraj/clackwork/total)](https://github.com/khamkarsuraj/clackwork/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/khamkarsuraj/clackwork/ci.yml?branch=main&label=CI)](https://github.com/khamkarsuraj/clackwork/actions/workflows/ci.yml)
+![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
+![Universal](https://img.shields.io/badge/universal-Apple%20silicon%20%7C%20Intel-lightgrey)
+
 A native macOS menu bar utility that plays mechanical keyboard sounds as you type in any app.
 
 ## Status
