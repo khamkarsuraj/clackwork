@@ -250,7 +250,7 @@ The workflow needs these repository secrets (Settings > Secrets and variables > 
 | `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID`, `NOTARY_KEY_BASE64` | An App Store Connect API key with the Developer role: its key ID, the issuer ID, and the `.p8` file encoded with `base64 -i AuthKey.p8` |
 | `SPARKLE_PRIVATE_KEY` | The EdDSA private key printed by Sparkle's `generate_keys -x`. Without it the release is still published; only the appcast step is skipped |
 
-One-time setup: enable GitHub Pages for the repository from the `gh-pages` branch, root folder, after the first release has created the branch. The appcast is then at `https://khamkarsuraj.github.io/clackwork/appcast.xml`, which is the feed URL for #77. Sparkle fetches both the appcast and the DMG without signing in, so the repository has to be public, or on a plan that serves private Pages, before an update can reach anyone.
+GitHub Pages serves the `gh-pages` branch, which also holds the landing page at https://khamkarsuraj.github.io/clackwork/. The appcast is at `https://khamkarsuraj.github.io/clackwork/appcast.xml`, which is the feed URL for #77. Sparkle fetches both the appcast and the DMG without signing in, so the repository has to stay public for updates to reach anyone.
 
 To package by hand, build a Developer ID signed app (Product > Archive in Xcode, then Distribute App > Direct Distribution > Export), store notarization credentials once with `xcrun notarytool store-credentials clackwork`, and run:
 
