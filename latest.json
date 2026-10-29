@@ -1,10 +1,10 @@
 {
-  "tag": "v1.0.0-beta.1",
-  "version": "1.0.0-beta.1",
-  "build": 66,
+  "tag": "v1.0.0-beta.2",
+  "version": "1.0.0-beta.2",
+  "build": 80,
   "prerelease": true,
-  "name": "Clackwork-1.0.0-beta.1.dmg",
-  "url": "https://github.com/khamkarsuraj/thlick/releases/download/v1.0.0-beta.1/Clackwork-1.0.0-beta.1.dmg",
-  "size": 7580349,
-  "published": "2026-10-28"
+  "name": "Thlick-1.0.0-beta.2.dmg",
+  "url": "https://github.com/khamkarsuraj/thlick/releases/download/v1.0.0-beta.2/Thlick-1.0.0-beta.2.dmg",
+  "size": 7908887,
+  "published": "2026-10-29"
 }
