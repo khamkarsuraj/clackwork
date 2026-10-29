@@ -5,5 +5,5 @@
 
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) APP_STORE
 
-// Both targets build clackwork.app into the same folder, as Xcode's test runner expects;
+// Both targets build thlick.app into the same folder, as Xcode's test runner expects;
 // whichever scheme you build last is the app that's there.

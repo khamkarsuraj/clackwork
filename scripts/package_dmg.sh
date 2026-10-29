@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
-# Packages a built clackwork.app into a signed, notarized DMG (issue #45).
+# Packages a built thlick.app into a signed, notarized DMG (issue #45).
 #
-# Makes Clackwork-<version>.dmg with an Applications shortcut and signs it with the
+# Makes Thlick-<version>.dmg with an Applications shortcut and signs it with the
 # Developer ID Application certificate. With notarization credentials it first notarizes
 # the app and staples its ticket, then notarizes the DMG and staples that too, so Gatekeeper
 # accepts both without a network round trip. The app must already be signed with Developer
 # ID and the hardened runtime, as the release workflow's archive step does.
 #
 # Usage:
-#   scripts/package_dmg.sh --app PATH/clackwork.app [--out DIR] [--identity NAME]
+#   scripts/package_dmg.sh --app PATH/thlick.app [--out DIR] [--identity NAME]
 #       [--notary-profile NAME | --notary-key FILE --notary-key-id ID --notary-issuer ID]
 #
 #   --app PATH           the built, Developer ID signed app (required)
@@ -91,10 +91,10 @@ codesign -d --entitlements - --xml "$app" 2>/dev/null | grep -q 'com.apple.secur
 
 version=$(plutil -extract CFBundleShortVersionString raw -o - "$app/Contents/Info.plist")
 build=$(plutil -extract CFBundleVersion raw -o - "$app/Contents/Info.plist")
-dmg_name="Clackwork-$version.dmg"
+dmg_name="Thlick-$version.dmg"
 echo "Packaging $(basename "$app") $version ($build) as $dmg_name"
 
-work=$(mktemp -d -t clackwork-dmg)
+work=$(mktemp -d -t thlick-dmg)
 trap 'rm -rf "$work"' EXIT
 stage=$work/stage
 mkdir -p "$stage" "$out"
@@ -112,7 +112,7 @@ fi
 
 dmg=$out/$dmg_name
 rm -f "$dmg"
-hdiutil create -volname "Clackwork $version" -srcfolder "$stage" -fs HFS+ \
+hdiutil create -volname "Thlick $version" -srcfolder "$stage" -fs HFS+ \
   -format UDZO -imagekey zlib-level=9 -ov "$dmg" > /dev/null
 codesign --force --sign "$identity" --timestamp "$dmg"
 
