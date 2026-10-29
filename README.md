@@ -12,18 +12,26 @@ A native macOS menu bar utility that plays mechanical keyboard sounds as you typ
 
 Early v1.0 development.
 
-| Area                                                                      | State                                      |
-| ------------------------------------------------------------------------- | ------------------------------------------ |
-| Main window: profiles, preview, volume, Try it field, light and dark mode | Done                                       |
-| Sound engine with 4 profiles: Cobalt Clack, Walnut Bump, Onyx Thock and Ember Tap | Done, using development recordings; in-house recordings pending (#49) |
-| System-wide key listener                                                  | Done                                       |
-| Global shortcuts, customizable in Settings                                | Done                                       |
-| Settings: launch at login, Dock icon, Input Monitoring status             | Done                                       |
-| Menu bar popover and icon states                                          | Not started                                |
-| Onboarding, HUD overlay                                                   | Not started                                |
-| In-house or confirmed-license recordings                                  | Not started                                |
-| Auto-mute while the microphone is in use                                  | Done                                       |
-| Per-app exclusions                                                        | Done                                       |
+| Area | State |
+| --- | --- |
+| Main window: profiles, preview, volume, Try it field, light and dark mode | Done |
+| Sound engine with 4 profiles: Cobalt Clack, Walnut Bump, Onyx Thock and Ember Tap | Done, using development recordings |
+| System-wide key listener, recovery after sleep, device and permission changes | Done |
+| Global shortcuts, customizable in Settings, with a HUD and a cheat sheet (⌃⌥S) | Done |
+| Settings: launch at login, Dock icon, Input Monitoring status | Done |
+| Menu bar popover, timed mute and icon states | Done |
+| First-launch onboarding | Done |
+| Auto-mute while the microphone is in use | Done |
+| Per-app exclusions | Done |
+| VoiceOver, keyboard navigation and Reduce Motion | Done |
+| App icon | Done |
+| Latency, CPU, startup and memory targets | Done, measured with the development recordings |
+| App Store build variant | Done |
+| Release workflow: signed, notarized DMG and appcast | Done; waiting on the first tagged release (#45) |
+| In-house recordings for the 4 profiles | Not started (#49), then re-measure memory (#86) |
+| Update check with Sparkle | Not started (#77) |
+| Key-up sounds | Not started (#82) |
+| App Store listing, TestFlight and submission | Not started (#81) |
 
 ## Build and run
 
@@ -213,15 +221,19 @@ Only the key type picks the sound. The key's position travels with it for the on
 clackwork/
 ├── App/          App entry, object container, debug tooling
 ├── Diagnostics/  Latency, CPU and startup probes, and the latency bench
-├── Audio/        Sound engine and recorded pack loader
+├── Audio/        Sound engine, recorded pack loader, playback gate, microphone monitor
+├── HUD/          Overlay shown after each shortcut
 ├── Listener/     System-wide key event tap
+├── MenuBar/      Menu bar item, popover and icon states
 ├── Models/       Profiles, key types, keyboard layout, shortcuts
 ├── Shortcuts/    Global hot key registration
 ├── Sounds/       Recorded sound packs bundled with the app, and their license notices
-├── State/        App state and shortcut store
-└── Views/        Main window, Keyboards, Settings, Shortcuts
+├── State/        App state, shortcut and exclusion stores, onboarding
+└── Views/        Main window, Keyboards, Onboarding, Popover, Settings, Shortcuts
 clackworkTests/   Unit tests
 Config/           Build settings shared by both app targets, plus the App Store additions
+docs/             PRD and design notes
+scripts/          Pack import, latency bench, DMG packaging
 ```
 
 ## Sound packs
@@ -277,4 +289,19 @@ clackwork.app/Contents/MacOS/clackwork --stress-sounds 300
 clackwork.app/Contents/MacOS/clackwork --test-shortcuts 1
 clackwork.app/Contents/MacOS/clackwork --test-keymap 1
 clackwork.app/Contents/MacOS/clackwork --latency-report 1
+clackwork.app/Contents/MacOS/clackwork --mic-report
+clackwork.app/Contents/MacOS/clackwork --mic-watch 60
 ```
+
+To render a single view to a PNG:
+
+```
+clackwork.app/Contents/MacOS/clackwork --render-popover <out.png> [--popover-state off|muted|timed|automuted|paused] [--popover-profile <id>]
+clackwork.app/Contents/MacOS/clackwork --render-onboarding <out.png> [--onboarding-step welcome|permission|keyboard|finish]
+clackwork.app/Contents/MacOS/clackwork --render-settings <out.png> [--with-exclusions]
+clackwork.app/Contents/MacOS/clackwork --render-hud <out.png> [--hud-action toggleMute|toggleSound|nextKeyboard|volumeUp|…]
+clackwork.app/Contents/MacOS/clackwork --render-cheatsheet <out.png>
+clackwork.app/Contents/MacOS/clackwork --render-canvas <out.png>
+```
+
+Each accepts `--dark`.
