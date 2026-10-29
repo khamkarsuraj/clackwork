@@ -1,34 +1,106 @@
 {
-  "fill" : {
-    "solid" : "extended-gray:1.00000,1.00000"
+  "fill": {
+    "linear-gradient": [
+      "extended-srgb:0.23922,0.54510,1.00000,1.00000",
+      "extended-srgb:0.07059,0.21961,0.78824,1.00000"
+    ],
+    "orientation": {
+      "start": {
+        "x": 0.5,
+        "y": 0
+      },
+      "stop": {
+        "x": 0.5,
+        "y": 1
+      }
+    }
   },
-  "groups" : [
+  "groups": [
     {
-      "name" : "Legend",
-      "layers" : [
+      "name": "Stem",
+      "layers": [
         {
-          "image-name" : "legend.png",
-          "name" : "legend",
-          "position" : { "scale" : 0.46, "translation-in-points" : [ 0, 0 ] }
+          "image-name": "barp0.svg",
+          "name": "barp0"
         }
       ],
-      "shadow" : { "kind" : "neutral", "opacity" : 0.3 },
-      "translucency" : { "enabled" : false, "value" : 0 }
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.2
+      }
     },
     {
-      "name" : "Keycap",
-      "layers" : [
+      "name": "Inner",
+      "layers": [
         {
-          "image-name" : "cap.png",
-          "name" : "cap",
-          "position" : { "scale" : 0.46, "translation-in-points" : [ 0, 0 ] }
+          "image-name": "barm1.svg",
+          "name": "barm1"
+        },
+        {
+          "image-name": "barp1.svg",
+          "name": "barp1"
         }
       ],
-      "shadow" : { "kind" : "neutral", "opacity" : 0.6 },
-      "translucency" : { "enabled" : false, "value" : 0 }
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.2
+      }
+    },
+    {
+      "name": "Middle",
+      "layers": [
+        {
+          "image-name": "barm2.svg",
+          "name": "barm2"
+        },
+        {
+          "image-name": "barp2.svg",
+          "name": "barp2"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.2
+      }
+    },
+    {
+      "name": "Outer",
+      "layers": [
+        {
+          "image-name": "barm3.svg",
+          "name": "barm3"
+        },
+        {
+          "image-name": "barp3.svg",
+          "name": "barp3"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.2
+      }
     }
   ],
-  "supported-platforms" : {
-    "squares" : [ "macOS" ]
+  "supported-platforms": {
+    "circles": [
+      "watchOS"
+    ],
+    "squares": "shared"
   }
 }
