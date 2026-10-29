@@ -4,7 +4,7 @@
 #
 # Builds a Release app, runs its latency bench (simulated key presses, no typing or
 # permissions needed), and saves the report to perf-results/latency-<commit>-<time>.json.
-# The sound packs must be in clackwork/Sounds. Use wired or built-in output; Bluetooth
+# The sound packs must be in thlick/Sounds. Use wired or built-in output; Bluetooth
 # adds its own latency.
 #
 # Usage:
@@ -36,12 +36,12 @@ done
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 derived="$root/build/latency"
-app="$derived/Build/Products/Release/clackwork.app/Contents/MacOS/clackwork"
+app="$derived/Build/Products/Release/thlick.app/Contents/MacOS/thlick"
 
 echo "Building Release…"
 mkdir -p "$derived"
 if ! xcodebuild build -quiet \
-  -project "$root/clackwork.xcodeproj" -scheme clackwork -configuration Release \
+  -project "$root/thlick.xcodeproj" -scheme thlick -configuration Release \
   -destination 'platform=macOS' -derivedDataPath "$derived" > "$derived/build.log" 2>&1; then
   grep -E 'error:' "$derived/build.log" || tail -20 "$derived/build.log"
   echo "Build failed; full log in $derived/build.log"

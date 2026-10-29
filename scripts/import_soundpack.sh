@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Imports a single-file sound pack (a folder with config.json and one audio file)
-# into the app as clackwork/Sounds/<profile-id>.caf and <profile-id>.json.
+# into the app as thlick/Sounds/<profile-id>.caf and <profile-id>.json.
 #
 # The audio is converted to lossless mono ALAC at its original sample rate. Slice
 # timings in config.json are in milliseconds, so they stay valid. Only the fields the
@@ -12,7 +12,7 @@
 #
 # Profile ids: cobalt-clack, walnut-bump, onyx-thock, ember-tap
 #
-# Keep each pack's license notice in clackwork/Sounds/ThirdPartyNotices.txt so it
+# Keep each pack's license notice in thlick/Sounds/ThirdPartyNotices.txt so it
 # ships with the sounds.
 
 set -euo pipefail
@@ -25,7 +25,7 @@ fi
 pack="$1"
 profile="$2"
 root="$(cd "$(dirname "$0")/.." && pwd)"
-dest="$root/clackwork/Sounds"
+dest="$root/thlick/Sounds"
 
 case "$profile" in
   cobalt-clack|walnut-bump|onyx-thock|ember-tap) ;;

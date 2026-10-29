@@ -23,7 +23,7 @@ playground.xcworkspace
 # Documentation
 docs/
 assets/
-!clackwork/AppIcon.icon/Assets/
+!thlick/AppIcon.icon/Assets/
 
 # Test results
 *.xcresult

@@ -34,8 +34,8 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild test \
-            -project clackwork.xcodeproj \
-            -scheme clackwork \
+            -project thlick.xcodeproj \
+            -scheme thlick \
             -destination 'platform=macOS' \
             -enableCodeCoverage YES \
             -resultBundlePath TestResults.xcresult \
@@ -50,8 +50,8 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild build \
-            -project clackwork.xcodeproj \
-            -scheme 'clackwork App Store' \
+            -project thlick.xcodeproj \
+            -scheme 'thlick App Store' \
             -configuration Release \
             -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO \
@@ -65,8 +65,8 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild build \
-            -project clackwork.xcodeproj \
-            -scheme clackwork \
+            -project thlick.xcodeproj \
+            -scheme thlick \
             -configuration Release \
             -destination 'generic/platform=macOS' \
             -derivedDataPath build/universal \
@@ -75,7 +75,7 @@ jobs:
             ASSETCATALOG_COMPILER_APPICON_NAME= \
             | tee -a xcodebuild.log \
             | grep -E 'error:|\*\* BUILD'
-          binary=build/universal/Build/Products/Release/clackwork.app/Contents/MacOS/clackwork
+          binary=build/universal/Build/Products/Release/thlick.app/Contents/MacOS/thlick
           archs=$(lipo -archs "$binary")
           echo "Architectures: $archs"
           [[ " $archs " == *" arm64 "* && " $archs " == *" x86_64 "* ]] || { echo "::error::Not universal: $archs"; exit 1; }
@@ -118,8 +118,8 @@ jobs:
           set -o pipefail
           uname -m
           xcodebuild test \
-            -project clackwork.xcodeproj \
-            -scheme clackwork \
+            -project thlick.xcodeproj \
+            -scheme thlick \
             -destination 'platform=macOS,arch=x86_64' \
             -resultBundlePath TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \

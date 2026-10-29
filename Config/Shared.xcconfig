@@ -1,5 +1,5 @@
-// App settings shared by both app targets: clackwork (direct download) and
-// clackwork App Store. Change them here, not in the target's Build Settings
+// App settings shared by both app targets: thlick (direct download) and
+// thlick App Store. Change them here, not in the target's Build Settings
 // pane, so the two builds can't drift apart.
 
 ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
@@ -16,8 +16,8 @@ GENERATE_INFOPLIST_FILE = YES
 INFOPLIST_KEY_NSHumanReadableCopyright =
 LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks
 MARKETING_VERSION = 1.0
-PRODUCT_BUNDLE_IDENTIFIER = com.surajkhamkar.clackwork
-PRODUCT_NAME = clackwork
+PRODUCT_BUNDLE_IDENTIFIER = com.surajkhamkar.thlick
+PRODUCT_NAME = thlick
 REGISTER_APP_GROUPS = YES
 STRING_CATALOG_GENERATE_SYMBOLS = YES
 SWIFT_APPROACHABLE_CONCURRENCY = YES

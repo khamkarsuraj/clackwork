@@ -1,8 +1,8 @@
-# Clackwork
+# Thlick
 
-[![Latest release](https://img.shields.io/github/v/release/khamkarsuraj/clackwork?include_prereleases&label=release)](https://github.com/khamkarsuraj/clackwork/releases)
-[![Downloads](https://img.shields.io/github/downloads/khamkarsuraj/clackwork/total)](https://github.com/khamkarsuraj/clackwork/releases)
-[![CI](https://img.shields.io/github/actions/workflow/status/khamkarsuraj/clackwork/ci.yml?branch=main&label=CI)](https://github.com/khamkarsuraj/clackwork/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/khamkarsuraj/thlick?include_prereleases&label=release)](https://github.com/khamkarsuraj/thlick/releases)
+[![Downloads](https://img.shields.io/github/downloads/khamkarsuraj/thlick/total)](https://github.com/khamkarsuraj/thlick/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/khamkarsuraj/thlick/ci.yml?branch=main&label=CI)](https://github.com/khamkarsuraj/thlick/actions/workflows/ci.yml)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
 ![Universal](https://img.shields.io/badge/universal-Apple%20silicon%20%7C%20Intel-lightgrey)
 
@@ -36,18 +36,18 @@ Early v1.0 development.
 ## Build and run
 
 - Xcode 26 or later. Deployment target is macOS 13 Ventura.
-- Open `clackwork.xcodeproj`, select the `clackwork` scheme, and press Cmd+R.
-- Two app targets build the same sources: `clackwork` is the direct download (a notarized DMG, which gets Sparkle updates in #77), and `clackwork App Store` is the Mac App Store build, compiled with `APP_STORE` and never linked against Sparkle. Both are sandboxed. Code that differs between them checks `Distribution.isAppStore`. Their build settings live in `Config/`; change them there, not in Xcode's Build Settings pane, so the two can't drift apart.
+- Open `thlick.xcodeproj`, select the `thlick` scheme, and press Cmd+R.
+- Two app targets build the same sources: `thlick` is the direct download (a notarized DMG, which gets Sparkle updates in #77), and `thlick App Store` is the Mac App Store build, compiled with `APP_STORE` and never linked against Sparkle. Both are sandboxed. Code that differs between them checks `Distribution.isAppStore`. Their build settings live in `Config/`; change them there, not in Xcode's Build Settings pane, so the two can't drift apart.
 
 ## Tests
 
 Press Cmd+U in Xcode, or run:
 
 ```
-xcodebuild test -project clackwork.xcodeproj -scheme clackwork -destination 'platform=macOS'
+xcodebuild test -project thlick.xcodeproj -scheme thlick -destination 'platform=macOS'
 ```
 
-Unit tests live in `clackworkTests/` and use Swift Testing. Each suite names the PRD requirement or issue it covers. They need no sound packs, audio device or Input Monitoring permission. The keyboard animation test briefly opens a small borderless window.
+Unit tests live in `thlickTests/` and use Swift Testing. Each suite names the PRD requirement or issue it covers. They need no sound packs, audio device or Input Monitoring permission. The keyboard animation test briefly opens a small borderless window.
 
 CI runs the same tests on every pull request and on every push to `main` (`.github/workflows/ci.yml`). Mark `build-and-test` and `test-intel` as required checks in the branch settings so a pull request can't merge until they pass. CPU, memory and latency targets are measured locally, since they need the sound packs and real audio hardware; see the sections below.
 
@@ -55,7 +55,7 @@ To run the tests as Intel code on an Apple silicon Mac (under Rosetta), use `-de
 
 ## Compatibility
 
-Clackwork runs on macOS 13 Ventura and later, on Apple silicon and Intel (PRD NFR, issue #39).
+Thlick runs on macOS 13 Ventura and later, on Apple silicon and Intel (PRD NFR, issue #39).
 
 - **Checked on every pull request:** the Release build is universal (`arm64` and `x86_64`) and targets macOS 13, and the tests pass on Apple silicon and on an Intel runner.
 - **Checked by the compiler:** an API newer than macOS 13 doesn't build without an `#available` check. Today there's one, for a macOS 26 toolbar style.
@@ -64,11 +64,11 @@ Clackwork runs on macOS 13 Ventura and later, on Apple silicon and Intel (PRD NF
 
 ## Permissions
 
-Hearing keys in other apps requires **Input Monitoring**. Click "Allow Input Monitoring…" in the app, then enable Clackwork in System Settings. Listening starts on its own within a few seconds, with no relaunch.
+Hearing keys in other apps requires **Input Monitoring**. Click "Allow Input Monitoring…" in the app, then enable Thlick in System Settings. Listening starts on its own within a few seconds, with no relaunch.
 
 Without the permission, sound still plays from the Preview button and the Try it field.
 
-Debug builds from Xcode can lose the grant after a rebuild. If keys go silent, toggle Clackwork off and on in Input Monitoring.
+Debug builds from Xcode can lose the grant after a rebuild. If keys go silent, toggle Thlick off and on in Input Monitoring.
 
 ## Privacy
 
@@ -95,7 +95,7 @@ Key press to sound latency must stay under 20 ms (PRD NFR, issue #32). It has fo
 | Render wait | Scheduled to the next audio cycle, at most one IO buffer | From the device's buffer size |
 | Output | Audio cycle to the speaker | From the device's reported latency |
 
-**Repeatable bench.** Use this to check a build and compare it with an earlier one. It needs no typing or permissions, only the sound packs in `clackwork/Sounds`, and it plays silently.
+**Repeatable bench.** Use this to check a build and compare it with an earlier one. It needs no typing or permissions, only the sound packs in `thlick/Sounds`, and it plays silently.
 
 1. Switch the Mac's sound output to the built-in speakers or wired headphones.
 2. From the project folder, run `scripts/latency_bench.sh`. It builds Release, then sends 1,000 simulated key presses 30 ms apart through the same path a real key takes after the event tap (the playback gate, then the sound engine on a user-interactive thread). It takes about a minute.
@@ -109,7 +109,7 @@ Key press to sound latency must stay under 20 ms (PRD NFR, issue #32). It has fo
    ```
 
    - **output** is the device measured and its audio path: one full IO buffer of render wait plus the device's output latency.
-   - **handoff** is Clackwork's own work per key. It should stay well under 1 ms.
+   - **handoff** is Thlick's own work per key. It should stay well under 1 ms.
    - **total** is hand-off plus the audio path, roughly what you hear. **p95 must stay under 20 ms**; the target is 10 ms.
    - p50 is the typical key, p95 the slowest 1 in 20, max the single slowest.
    - A `FAIL:` line means total p95 is over 20 ms. If you also see `warning: … looks like Bluetooth`, the output device is the cause; switch outputs and run again.
@@ -128,8 +128,8 @@ Reports go to `perf-results/`, which isn't committed since numbers depend on the
 **Audio path only.** No key presses needed:
 
 ```
-clackwork.app/Contents/MacOS/clackwork --latency-report 1
-clackwork.app/Contents/MacOS/clackwork --test-soundpacks 1
+thlick.app/Contents/MacOS/thlick --latency-report 1
+thlick.app/Contents/MacOS/thlick --test-soundpacks 1
 ```
 
 To compare IO buffer sizes, add `-ioBufferFrames 128` or any other size.
@@ -143,13 +143,13 @@ CPU must stay under 1% on average while idle and under 5% during sustained fast 
 Add the launch argument `-measureCPU YES`, either in Xcode (Product > Scheme > Edit Scheme > Run, with Build Configuration set to Release) or from Terminal:
 
 ```
-open clackwork.app --args -measureCPU YES
+open thlick.app --args -measureCPU YES
 ```
 
 Every 15 seconds the probe logs the app's average CPU, as a percentage of one core (the same scale as Activity Monitor). It splits the time into three parts. Typing is seconds with at least one key press, and the log also shows the typing rate. Settling is the first 5 seconds after the last key, while sounds and animations finish. Idle is everything after that. It skips the first 10 seconds after launch, and it counts key presses only, never which key was pressed. To watch the log outside Xcode:
 
 ```
-log stream --predicate 'subsystem == "com.surajkhamkar.clackwork" && category == "cpu"'
+log stream --predicate 'subsystem == "com.surajkhamkar.thlick" && category == "cpu"'
 ```
 
 For the typing number, type fast and steadily for at least 15 seconds in another app. Check idle both with the main window open and with it closed.
@@ -161,13 +161,13 @@ The first key press must play within 1 second of launch, with every profile load
 Add the launch argument `-measureStartup YES`, or run the binary from Terminal:
 
 ```
-clackwork.app/Contents/MacOS/clackwork -measureStartup YES
+thlick.app/Contents/MacOS/thlick -measureStartup YES
 ```
 
 Each milestone prints the time since the kernel started the process, so dyld and framework loading count too: `sounds ready` (every pack decoded and pitch-rendered, engine running), `listener on` (the key tap is up, or why it isn't) and `menu bar icon up` (drawn on the first pass of the run loop). On an Apple silicon MacBook a Release build reports sounds ready at about 300 ms and the listener on about 50 ms later, so the first key can play with every pack loaded well inside the budget. The milestones also go to the unified log:
 
 ```
-log stream --predicate 'subsystem == "com.surajkhamkar.clackwork" && category == "startup"'
+log stream --predicate 'subsystem == "com.surajkhamkar.thlick" && category == "startup"'
 ```
 
 ## Measuring memory
@@ -175,7 +175,7 @@ log stream --predicate 'subsystem == "com.surajkhamkar.clackwork" && category ==
 Memory must stay under 80 MB with every profile loaded (PRD NFR, issue #34). Measure a Release build with the main window open, after it has settled for a few seconds:
 
 ```
-footprint -p $(pgrep -nx clackwork)
+footprint -p $(pgrep -nx thlick)
 ```
 
 `Footprint` is the number that counts, the same one Activity Monitor shows as Memory. With the development packs an Apple silicon MacBook reads about 62 MB. The sounds themselves take about 13 MB (the `caulk::audio_buffer_resource` zone in `vmmap --summary`); packs are read slice by slice, so a longer recording doesn't cost memory, only more or longer slices do.
@@ -218,7 +218,7 @@ Only the key type picks the sound. The key's position travels with it for the on
 ## Project layout
 
 ```
-clackwork/
+thlick/
 ├── App/          App entry, object container, debug tooling
 ├── Diagnostics/  Latency, CPU and startup probes, and the latency bench
 ├── Audio/        Sound engine, recorded pack loader, playback gate, microphone monitor
@@ -230,7 +230,7 @@ clackwork/
 ├── Sounds/       Recorded sound packs bundled with the app, and their license notices
 ├── State/        App state, shortcut and exclusion stores, onboarding
 └── Views/        Main window, Keyboards, Onboarding, Popover, Settings, Shortcuts
-clackworkTests/   Unit tests
+thlickTests/   Unit tests
 Config/           Build settings shared by both app targets, plus the App Store additions
 docs/             PRD and design notes
 scripts/          Pack import, latency bench, DMG packaging
@@ -238,7 +238,7 @@ scripts/          Pack import, latency bench, DMG packaging
 
 ## Sound packs
 
-Recorded packs live in `clackwork/Sounds/` as `<profile-id>.caf` and `<profile-id>.json`, one per profile: `cobalt-clack`, `walnut-bump`, `onyx-thock` and `ember-tap`. A profile without a pack is silent.
+Recorded packs live in `thlick/Sounds/` as `<profile-id>.caf` and `<profile-id>.json`, one per profile: `cobalt-clack`, `walnut-bump`, `onyx-thock` and `ember-tap`. A profile without a pack is silent.
 
 The packs are committed, so a fresh clone plays every profile; their source originals stay out of the repo. A pack is a folder with one audio file and a `config.json` that maps key scan codes to `[start ms, duration ms]` slices of it. To add or replace one, run:
 
@@ -246,7 +246,7 @@ The packs are committed, so a fresh clone plays every profile; their source orig
 scripts/import_soundpack.sh <pack-folder> <profile-id>
 ```
 
-Keep each pack's license notice in `clackwork/Sounds/ThirdPartyNotices.txt` so it ships with the sounds.
+Keep each pack's license notice in `thlick/Sounds/ThirdPartyNotices.txt` so it ships with the sounds.
 
 ## Releasing
 
@@ -257,7 +257,7 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-`.github/workflows/release.yml` then archives the `clackwork` scheme as a universal Release build, with the version from the tag and the commit count as the build number, signs it with Developer ID, runs `scripts/package_dmg.sh` to make, notarize and staple `Clackwork-<version>.dmg`, creates the release with generated notes, and commits to the `gh-pages` branch: `latest.json` and the landing page's download link now point at the new DMG, and `appcast.xml` gains the release. A pre-release doesn't replace a stable release on the landing page. A tag with a suffix, such as `v1.1.0-beta.1`, becomes a pre-release. The dSYMs are kept as a workflow artifact for 90 days.
+`.github/workflows/release.yml` then archives the `thlick` scheme as a universal Release build, with the version from the tag and the commit count as the build number, signs it with Developer ID, runs `scripts/package_dmg.sh` to make, notarize and staple `Thlick-<version>.dmg`, creates the release with generated notes, and commits to the `gh-pages` branch: `latest.json` and the landing page's download link now point at the new DMG, and `appcast.xml` gains the release. A pre-release doesn't replace a stable release on the landing page. A tag with a suffix, such as `v1.1.0-beta.1`, becomes a pre-release. The dSYMs are kept as a workflow artifact for 90 days.
 
 The workflow needs these repository secrets (Settings > Secrets and variables > Actions):
 
@@ -268,12 +268,12 @@ The workflow needs these repository secrets (Settings > Secrets and variables > 
 | `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID`, `NOTARY_KEY_BASE64` | An App Store Connect API key with the Developer role: its key ID, the issuer ID, and the `.p8` file encoded with `base64 -i AuthKey.p8` |
 | `SPARKLE_PRIVATE_KEY` | The EdDSA private key printed by Sparkle's `generate_keys -x`. Without it the release is still published; only the appcast step is skipped |
 
-GitHub Pages serves the `gh-pages` branch, which also holds the landing page at https://khamkarsuraj.github.io/clackwork/. The page reads `latest.json` for its download button and falls back to the GitHub API, preferring a stable release over a pre-release; its static link always points at a DMG too, so it works without JavaScript. The appcast is at `https://khamkarsuraj.github.io/clackwork/appcast.xml`, which is the feed URL for #77. Sparkle fetches both the appcast and the DMG without signing in, so the repository has to stay public for updates to reach anyone.
+GitHub Pages serves the `gh-pages` branch, which also holds the landing page at https://khamkarsuraj.github.io/thlick/. The page reads `latest.json` for its download button and falls back to the GitHub API, preferring a stable release over a pre-release; its static link always points at a DMG too, so it works without JavaScript. The appcast is at `https://khamkarsuraj.github.io/thlick/appcast.xml`, which is the feed URL for #77. Sparkle fetches both the appcast and the DMG without signing in, so the repository has to stay public for updates to reach anyone.
 
-To package by hand, build a Developer ID signed app (Product > Archive in Xcode, then Distribute App > Direct Distribution > Export), store notarization credentials once with `xcrun notarytool store-credentials clackwork`, and run:
+To package by hand, build a Developer ID signed app (Product > Archive in Xcode, then Distribute App > Direct Distribution > Export), store notarization credentials once with `xcrun notarytool store-credentials thlick`, and run:
 
 ```
-scripts/package_dmg.sh --app path/to/clackwork.app --notary-profile clackwork
+scripts/package_dmg.sh --app path/to/thlick.app --notary-profile thlick
 ```
 
 Without a `--notary-profile` or `--notary-key` the script only signs the DMG, which is enough to check the image locally.
@@ -283,25 +283,25 @@ Without a `--notary-profile` or `--notary-key` the script only signs the DMG, wh
 Debug builds accept launch flags that need no screen recording permission. Run the binary inside the built app:
 
 ```
-clackwork.app/Contents/MacOS/clackwork --snapshot <out.png> [--dark] [--section settings]
-clackwork.app/Contents/MacOS/clackwork --export-sounds <dir>
-clackwork.app/Contents/MacOS/clackwork --stress-sounds 300
-clackwork.app/Contents/MacOS/clackwork --test-shortcuts 1
-clackwork.app/Contents/MacOS/clackwork --test-keymap 1
-clackwork.app/Contents/MacOS/clackwork --latency-report 1
-clackwork.app/Contents/MacOS/clackwork --mic-report
-clackwork.app/Contents/MacOS/clackwork --mic-watch 60
+thlick.app/Contents/MacOS/thlick --snapshot <out.png> [--dark] [--section settings]
+thlick.app/Contents/MacOS/thlick --export-sounds <dir>
+thlick.app/Contents/MacOS/thlick --stress-sounds 300
+thlick.app/Contents/MacOS/thlick --test-shortcuts 1
+thlick.app/Contents/MacOS/thlick --test-keymap 1
+thlick.app/Contents/MacOS/thlick --latency-report 1
+thlick.app/Contents/MacOS/thlick --mic-report
+thlick.app/Contents/MacOS/thlick --mic-watch 60
 ```
 
 To render a single view to a PNG:
 
 ```
-clackwork.app/Contents/MacOS/clackwork --render-popover <out.png> [--popover-state off|muted|timed|automuted|paused] [--popover-profile <id>]
-clackwork.app/Contents/MacOS/clackwork --render-onboarding <out.png> [--onboarding-step welcome|permission|keyboard|finish]
-clackwork.app/Contents/MacOS/clackwork --render-settings <out.png> [--with-exclusions]
-clackwork.app/Contents/MacOS/clackwork --render-hud <out.png> [--hud-action toggleMute|toggleSound|nextKeyboard|volumeUp|…]
-clackwork.app/Contents/MacOS/clackwork --render-cheatsheet <out.png>
-clackwork.app/Contents/MacOS/clackwork --render-canvas <out.png>
+thlick.app/Contents/MacOS/thlick --render-popover <out.png> [--popover-state off|muted|timed|automuted|paused] [--popover-profile <id>]
+thlick.app/Contents/MacOS/thlick --render-onboarding <out.png> [--onboarding-step welcome|permission|keyboard|finish]
+thlick.app/Contents/MacOS/thlick --render-settings <out.png> [--with-exclusions]
+thlick.app/Contents/MacOS/thlick --render-hud <out.png> [--hud-action toggleMute|toggleSound|nextKeyboard|volumeUp|…]
+thlick.app/Contents/MacOS/thlick --render-cheatsheet <out.png>
+thlick.app/Contents/MacOS/thlick --render-canvas <out.png>
 ```
 
 Each accepts `--dark`.

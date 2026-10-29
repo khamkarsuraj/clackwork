@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Creates the GitHub labels, milestones, issues and project board for Clackwork v1.0,
+# Creates the GitHub labels, milestones, issues and project board for Thlick v1.0,
 # based on docs/PRD.md. Safe to run more than once: existing labels are updated,
 # and milestones, issues, comments and the project are only created when missing.
 #
@@ -12,9 +12,9 @@
 
 set -euo pipefail
 
-REPO="${REPO:-khamkarsuraj/clackwork}"
+REPO="${REPO:-khamkarsuraj/thlick}"
 OWNER="${REPO%%/*}"
-PROJECT_TITLE="Clackwork v1.0"
+PROJECT_TITLE="Thlick v1.0"
 IMPLEMENTED_MARKER="<!-- bootstrap:implemented -->"
 
 DRY_RUN=0
@@ -360,7 +360,7 @@ The menu bar icon opens a compact popover, about 280 px wide.
 - [ ] Keyboard picker listing the 5 profiles, with a checkmark on the active one.
 - [ ] Volume slider with speaker icons at each end.
 - [ ] Mute button with the timed-mute menu (FR-13).
-- [ ] Footer with "Open Clackwork", Settings and Quit.
+- [ ] Footer with "Open Thlick", Settings and Quit.
 
 **Design:** `docs/design/Main.dc.html`, `docs/design/PopoverDark.dc.html` (kept locally, not in the repo)
 EOF
@@ -378,7 +378,7 @@ EOF
 issue "Option to hide the Dock icon and run from the menu bar only" "type:feature,area:settings,area:menubar,priority:P0" "$M2" <<'EOF'
 **PRD:** FR-19 · **Priority:** P0
 
-Users can hide the Dock icon and run Clackwork as a menu bar-only app.
+Users can hide the Dock icon and run Thlick as a menu bar-only app.
 
 ### Acceptance criteria
 - [ ] The "Show icon in Dock" setting hides and shows the Dock icon immediately.
@@ -393,7 +393,7 @@ EOF
 issue "Launch at login, on by default after onboarding" "type:feature,area:settings,area:onboarding,priority:P0" "$M3" <<'EOF'
 **PRD:** FR-20 · **Priority:** P0
 
-Clackwork starts at login, turned on by default when onboarding finishes.
+Thlick starts at login, turned on by default when onboarding finishes.
 
 ### Acceptance criteria
 - [ ] The "Open at login" setting registers and unregisters the login item.
